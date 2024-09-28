@@ -3,11 +3,13 @@
 
 void Daemon::Start()
 {
+    pid_t pid;
     try {
-        std::string relativePath = "cettings.cfg";
+        std::string relativePath = "settings.cfg";
         configPath = std::filesystem::absolute(relativePath).string();
+        logFile = "size.log";
 
-        pid_t pid = fork();
+        pid = fork();
         if (pid < 0) {
             std::stringstream ss;
             ss << "ОШИБКА fork(), (код ошибки errno = " << errno << ")\n"
@@ -43,9 +45,22 @@ void Daemon::Start()
     catch (const std::exception &ex) {
         Logger::Logger::InstancePtr()->logMessage(Logger::LogLevel::CRITICAL,
                                                   "ИСКЛЮЧЕНИЕ: %s", ex.what());
+        if(pid == 0) {
+            Logger::Logger::InstancePtr()->logMessage(Logger::LogLevel::INFO,
+                                                      "Завершение работы Daemon!\n");
+        }
+        else {
+            Logger::Logger::InstancePtr()->logMessage(Logger::LogLevel::INFO,
+                                                      "Завершение работы родительского процесса!\n");
+        }
         exit(EXIT_FAILURE);
     }
 
+    std::filesystem::path currentPath = std::filesystem::current_path();
+    Logger::Logger::InstancePtr()->logMessage(Logger::LogLevel::INFO,
+                                              "Старт работы Daemon!\n");
+    Logger::Logger::InstancePtr()->logMessage(Logger::LogLevel::INFO,
+                                              "Текущая директория: %s\n", currentPath.string().c_str());
 }
 
 void Daemon::ReadConfig()
@@ -84,7 +99,7 @@ void Daemon::ReadConfig()
             }
 
             Logger::Logger::InstancePtr()->logMessage(Logger::LogLevel::INFO,
-                                                      "Путь к папке под номером %d: %s\n", number, path);
+                                                      "Путь к папке под номером %d: %s\n", number, path.c_str());
         }
 
         auto time = getSettingValue<int>(settings, "time");
@@ -95,25 +110,28 @@ void Daemon::ReadConfig()
     catch (const std::exception& ex) {
         Logger::Logger::InstancePtr()->logMessage(Logger::LogLevel::CRITICAL,
                                                   "ИСКЛЮЧЕНИЕ: %s", ex.what());
+        Logger::Logger::InstancePtr()->logMessage(Logger::LogLevel::INFO,
+                                                  "Завершение работы Daemon!\n");
         exit(EXIT_FAILURE);
     }
 }
 
 void Daemon::Proccessing()
 {
+    std::filesystem::path fullPath = std::filesystem::path(folders.second) / logFile;
     while(true) {
         try{
             auto pathSize = getFolderSize(folders.first);
             Logger::Logger::InstancePtr()->logMessage(Logger::LogLevel::INFO,
-                                                      "Размер папки под номером один: \n", pathSize);
-            Logger::Logger::InstancePtr()->logToFile(configPath, Logger::LogLevel::INFO,
-                                                     "Сообщение лога: %d", 42);
+                                                      "Размер папки под номером один: %d\n", pathSize);
+            Logger::Logger::InstancePtr()->logToFile(fullPath, Logger::LogLevel::INFO,
+                                                     "Размер папки под номером один: %d\n", pathSize);
             clearFolder(folders.first);
         }
         catch(const std::exception& ex) {
             Logger::Logger::InstancePtr()->logMessage(Logger::LogLevel::ERROR,
                                                       "ИСКЛЮЧЕНИЕ: %s", ex.what());
-            Logger::Logger::InstancePtr()->logToFile(configPath, Logger::LogLevel::ERROR,
+            Logger::Logger::InstancePtr()->logToFile(fullPath, Logger::LogLevel::ERROR,
                                                      "ИСКЛЮЧЕНИЕ: %s", ex.what());
         }
 
@@ -163,7 +181,7 @@ void Daemon::checkDirectoryExists(const std::string &dirPath)
     namespace fs = std::filesystem;
 
     if (!fs::exists(dirPath) || !fs::is_directory(dirPath)) {
-        throw std::runtime_error("Директория \"" + dirPath + "\" не существует.");
+        throw std::runtime_error("Директория \"" + dirPath + "\" не существует.\n");
     }
 }
 

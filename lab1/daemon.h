@@ -54,6 +54,7 @@ private:
     std::string configPath;
     std::pair<std::string, std::string> folders;
     int time;
+    std::string logFile;
 };
 
 #endif // DAEMON_H
