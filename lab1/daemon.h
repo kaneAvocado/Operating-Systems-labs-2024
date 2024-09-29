@@ -16,6 +16,13 @@
 #include <filesystem>
 #include <libconfig.h++>
 #include <optional>
+#include <signal.h>
+#include <atomic>
+#include <thread>
+#include <mutex>
+#include <queue>
+#include <functional>
+#include <cstring>
 
 #include "logger.h"
 
@@ -49,12 +56,27 @@ private:
     uintmax_t getFolderSize(const std::filesystem::path& folderPath);
     void clearFolder(const std::filesystem::path& folderPath);
     void checkDirectoryExists(const std::string& dirPath);
+    void ConnectSignals();
+    void termLog();
+    void hupReadConfig();
+    static void termHandler(int signum, siginfo_t *info, void *ctx);
+    static void hupHandler(int signum, siginfo_t *info, void *ctx) {
+        readConfig = true;
+    }
+
 
 private:
     std::string configPath;
     std::pair<std::string, std::string> folders;
     int time;
     std::string logFile;
+    struct sigaction term_handler;
+    struct sigaction hup_handler;
+    static std::atomic<bool> stopDaemon;
+    static std::atomic<bool> readConfig;
+    static std::mutex logMutex;
+    static std::mutex configMutex;
+    static std::queue<std::string> logQueue;
 };
 
 #endif // DAEMON_H

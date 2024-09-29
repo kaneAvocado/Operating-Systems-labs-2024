@@ -1,5 +1,10 @@
 #include "daemon.h"
 
+std::atomic<bool> Daemon::stopDaemon(false);
+std::mutex Daemon::logMutex;
+std::atomic<bool> Daemon::readConfig(false);
+std::mutex Daemon::configMutex;
+std::queue<std::string> Daemon::logQueue;
 
 void Daemon::Start()
 {
@@ -21,6 +26,8 @@ void Daemon::Start()
                                                       "Завершение работы родительского процесса!\n");
             exit(EXIT_SUCCESS);
         }
+
+        ConnectSignals();
 
         umask(0);
         pid_t sid = setsid();
@@ -66,6 +73,7 @@ void Daemon::Start()
 void Daemon::ReadConfig()
 {
     libconfig::Config cfg;
+    std::lock_guard<std::mutex> lock(configMutex);
     try {
 
         cfg.readFile(configPath.c_str());
@@ -183,6 +191,77 @@ void Daemon::checkDirectoryExists(const std::string &dirPath)
     if (!fs::exists(dirPath) || !fs::is_directory(dirPath)) {
         throw std::runtime_error("Директория \"" + dirPath + "\" не существует.\n");
     }
+}
+
+void Daemon::ConnectSignals()
+{
+    std::memset(&term_handler, 0, sizeof(term_handler));
+    term_handler.sa_sigaction = Daemon::termHandler;
+    term_handler.sa_flags = SA_RESTART | SA_SIGINFO;
+
+    if (sigaction(SIGTERM, &term_handler, nullptr) == -1) {
+        std::stringstream ss;
+        ss << "ОШИБКА sigaction(), (код ошибки errno = " << errno << ")\n"
+           <<  LOG_INDENT "ПРОДОЛЖЕНИЕ РАБОТЫ НЕ ВОЗМОЖНО\n";
+        throw std::runtime_error(ss.str());
+    }
+
+    std::thread logThread(&Daemon::termLog, this);
+    logThread.detach();
+
+    std::memset(&hup_handler, 0, sizeof(hup_handler));
+    hup_handler.sa_sigaction = Daemon::hupHandler;
+    hup_handler.sa_flags = SA_RESTART | SA_SIGINFO;
+
+    if(sigaction(SIGHUP, &hup_handler, nullptr) == -1) {
+        std::stringstream ss;
+        ss << "ОШИБКА sigaction(), (код ошибки errno = " << errno << ")\n"
+           <<  LOG_INDENT "ПРОДОЛЖЕНИЕ РАБОТЫ НЕ ВОЗМОЖНО\n";
+        throw std::runtime_error(ss.str());
+    }
+
+    std::thread configThread(&Daemon::hupReadConfig, this);
+    configThread.detach();
+}
+
+void Daemon::termLog()
+{
+    while(true) {
+        std::lock_guard<std::mutex> lock(logMutex);
+        while (!logQueue.empty()) {
+            Logger::Logger::InstancePtr()->logMessage(Logger::LogLevel::INFO,
+                                                      logQueue.front().c_str());
+            logQueue.pop();
+
+            if (stopDaemon) {
+                exit(EXIT_FAILURE);
+            }
+        }
+        if (stopDaemon) {
+            exit(EXIT_FAILURE);
+        }
+    }
+}
+
+void Daemon::hupReadConfig()
+{
+    while(true) {
+        if(readConfig == true) {
+            ReadConfig();
+            readConfig = false;
+        }
+    }
+}
+
+void Daemon::termHandler(int signum, siginfo_t *info, void *ctx)
+{
+    std::string termMessage = static_cast<std::string>("Завершение работы Daemon! ") + static_cast<std::string>("Получил сигнал ") + std::to_string(signum) +
+            " from process " + std::to_string(info->si_pid) + "\n";
+    {
+        std::lock_guard<std::mutex> lock(logMutex);
+        logQueue.push(termMessage);
+    }
+    stopDaemon = true;
 }
 
 template<typename TypeValue>
