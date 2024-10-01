@@ -4,7 +4,6 @@
 #include <unordered_map>
 #include <chrono>
 #include <functional>
-#include <thread>
 #include "config.hpp"
 
 class Daemon
@@ -24,10 +23,15 @@ private:
     std::vector<Data> table;
     std::vector<std::chrono::time_point<std::chrono::steady_clock>> time_points;
 
+    volatile sig_atomic_t got_sighup = 0;
+    volatile sig_atomic_t got_sigterm = 0;
+
     void replace_folder(const Data&);
     void create_pid_file();
     void daemonize();
     void set_data(const std::vector<Data> &);
+
+    friend void signal_handler(int sig);
 
     Daemon() = default;
     Daemon(const Daemon &) = delete;
@@ -35,3 +39,4 @@ private:
     Daemon &operator=(const Daemon &) = delete;
     Daemon &operator=(Daemon &&) = delete;
 };
+

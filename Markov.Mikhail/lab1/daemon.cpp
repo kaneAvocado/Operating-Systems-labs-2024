@@ -5,13 +5,10 @@ void signal_handler(int sig)
     switch (sig)
     {
     case SIGHUP:
-        syslog(LOG_INFO, "Re-read config file");
-        Daemon::get_instance().open_config_file();
+        Daemon::get_instance().got_sighup = 1;
         break;
     case SIGTERM:
-        syslog(LOG_INFO, "Exiting");
-        closelog();
-        exit(EXIT_SUCCESS);
+        Daemon::get_instance().got_sigterm = 1;
         break;
     }
 }
@@ -126,26 +123,37 @@ void Daemon::run(const std::filesystem::path & current_dir, const std::string & 
 
     open_config_file();
 
-    std::jthread signal_thread([]()
-                               {
-        signal(SIGHUP, signal_handler);
-        signal(SIGTERM, signal_handler); 
-        });
+    signal(SIGHUP, signal_handler);
+    signal(SIGTERM, signal_handler); 
 
     while (true)
     {
-        for(size_t i=0; i < table.size(); ++i)
+        if (got_sighup == 1)
+        {
+            got_sighup = 0;
+            syslog(LOG_INFO, "Re-read config file");
+        }
+
+        if(got_sigterm == 1)
+        {
+            got_sigterm = 0;
+            syslog(LOG_INFO, "Exiting");
+            closelog();
+            exit(EXIT_SUCCESS);
+        }
+
+        for (size_t i = 0; i < table.size(); ++i)
         {
             auto now_time = std::chrono::steady_clock::now();
             auto prev_time = time_points[i];
             int diff = std::chrono::duration_cast<std::chrono::seconds>(now_time - prev_time).count();
             if (diff >= table[i].time)
-            {   
+            {
                 try
                 {
                     replace_folder(table[i]);
                 }
-                catch(const std::exception& e)
+                catch (const std::exception &e)
                 {
                     syslog(LOG_ERR, "Folder can not be replaced: %s", e.what());
                 }

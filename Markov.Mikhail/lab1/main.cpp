@@ -11,6 +11,5 @@ int main(int argc, char *argv[])
     syslog(LOG_INFO, "Daemon starts");
     Daemon::get_instance().run(std::filesystem::current_path(), std::string(argv[1]));
 
-    syslog(LOG_INFO, "Exit");
     return EXIT_SUCCESS;
 }
