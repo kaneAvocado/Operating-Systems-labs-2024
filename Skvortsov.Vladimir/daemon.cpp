@@ -1,13 +1,15 @@
 #include "daemon.hpp"
-#include <regex>
-#include <unistd.h>
-#include <limits.h>
 
-void Daemon::run(const std::string& config_path, int interval = 5) {
+// Constants
+const char* PID_FILE = "/var/run/os-lab-daemon.pid";
+const mode_t DIR_PERMISSIONS = 0777;
+const int PID_STR_SIZE = 10;
+
+void Daemon::run(const std::string& config_path, int interval = 10) {
   // Store the current working directory
   char cwd[PATH_MAX];
   if (getcwd(cwd, sizeof(cwd)) == NULL) {
-    syslog(LOG_ERR, "Could not get current working directory, exiting");
+    syslog(LOG_ERR, "Could not get current working directory: %s", strerror(errno));
     exit(EXIT_FAILURE);
   }
   this->current_dir = std::string(cwd);
@@ -25,11 +27,10 @@ void Daemon::run(const std::string& config_path, int interval = 5) {
 };
 
 void Daemon::daemonize() {
-  pid_t pid, sid;
-
-  pid = fork();
+  pid_t pid = fork();
   // Handle error
   if (pid < 0) {
+    syslog(LOG_ERR, "Fork failed: %s", strerror(errno));
     exit(EXIT_FAILURE);
   }
   // Parent process. Exit
@@ -40,13 +41,15 @@ void Daemon::daemonize() {
 
   umask(0);
 
-  sid = setsid();
+  pid_t sid = setsid();
   if (sid < 0) {
+    syslog(LOG_ERR, "setsid failed: %s", strerror(errno));
     exit(EXIT_FAILURE);
   }
   std::cout << "sid: " << sid << std::endl;
 
-  if ((chdir("/")) < 0) {
+  if (chdir("/") < 0) {
+    syslog(LOG_ERR, "chdir failed: %s", strerror(errno));
     exit(EXIT_FAILURE);
   }
   std::cout << "chdir done" << std::endl;
@@ -56,23 +59,21 @@ void Daemon::daemonize() {
   close(STDERR_FILENO);
 
   create_pid_file();
-}
+};
 
 void Daemon::create_pid_file() {
-  const char* pid_file = "/var/run/os-lab-daemon.pid";
-  int pid_file_handle = open(pid_file, O_RDWR | O_CREAT, 0600);
-
+  int pid_file_handle = open(PID_FILE, O_RDWR | O_CREAT, 0600);
   if (pid_file_handle == -1) {
-    syslog(LOG_ERR, "Could not open PID file %s, exiting", pid_file);
+    syslog(LOG_ERR, "Could not open PID file %s: %s", PID_FILE, strerror(errno));
     exit(EXIT_FAILURE);
   }
 
   if (lockf(pid_file_handle, F_TLOCK, 0) == -1) {
-    syslog(LOG_ERR, "Could not lock PID file %s, exiting", pid_file);
+    syslog(LOG_ERR, "Could not lock PID file %s: %s", PID_FILE, strerror(errno));
     exit(EXIT_FAILURE);
   }
 
-  char old_pid_str[10];
+  char old_pid_str[PID_STR_SIZE];
   if (read(pid_file_handle, old_pid_str, sizeof(old_pid_str) - 1) > 0) {
     int old_pid = atoi(old_pid_str);
 
@@ -80,28 +81,26 @@ void Daemon::create_pid_file() {
       syslog(LOG_INFO, "Process with PID %d is already running, sending SIGTERM", old_pid);
       kill(old_pid, SIGTERM);
       sleep(1);
-    } else {
-      syslog(LOG_INFO, "No process found with PID %d, continuing...", old_pid);
     }
   }
 
   ftruncate(pid_file_handle, 0);
   lseek(pid_file_handle, 0, SEEK_SET);
 
-  char str[10];
+  char str[PID_STR_SIZE];
   sprintf(str, "%d\n", getpid());
   write(pid_file_handle, str, strlen(str));
 
-  syslog(LOG_INFO, "PID file %s created successfully with PID %d", pid_file, getpid());
+  syslog(LOG_INFO, "PID file %s created successfully with PID %d", PID_FILE, getpid());
 
   close(pid_file_handle);
-}
+};
 
 void Daemon::read_config() {
-  std::ifstream config_file(current_dir + "/" + config_path);
+  std::ifstream config_file(resolve_path(config_path));
 
   if (!config_file.is_open()) {
-    syslog(LOG_ERR, "Could not open config file %s", config_path.c_str());
+    syslog(LOG_ERR, "Could not open config file %s: %s", config_path.c_str(), strerror(errno));
     exit(EXIT_FAILURE);
   }
 
@@ -116,29 +115,33 @@ void Daemon::read_config() {
       std::string subfolder = match[4].str();
 
       // Remove quotes if present
-      if (folder1.front() == '"' && folder1.back() == '"') {
-        folder1 = folder1.substr(1, folder1.size() - 2);
-      }
-      if (folder2.front() == '"' && folder2.back() == '"') {
-        folder2 = folder2.substr(1, folder2.size() - 2);
-      }
-      if (subfolder.front() == '"' && subfolder.back() == '"') {
-        subfolder = subfolder.substr(1, subfolder.size() - 2);
-      }
+      folder1 = remove_quotes(folder1);
+      folder2 = remove_quotes(folder2);
+      subfolder = remove_quotes(subfolder);
 
       // Resolve relative paths
-      if (folder1.front() != '/') {
-        folder1 = current_dir + "/" + folder1;
-      }
-      if (folder2.front() != '/') {
-        folder2 = current_dir + "/" + folder2;
-      }
+      folder1 = resolve_path(folder1);
+      folder2 = resolve_path(folder2);
 
       config[folder1] = {folder2, {ext, subfolder}};
     }
   }
   config_file.close();
-}
+};
+
+std::string Daemon::remove_quotes(const std::string& str) {
+  if (str.front() == '"' && str.back() == '"') {
+    return str.substr(1, str.size() - 2);
+  }
+  return str;
+};
+
+std::string Daemon::resolve_path(const std::string &path) {
+  if (path.front() != '/') {
+    return current_dir + "/" + path;
+  }
+  return path;
+};
 
 void signal_handler(int sig) {
   switch (sig) {
@@ -152,12 +155,12 @@ void signal_handler(int sig) {
       exit(EXIT_SUCCESS);
       break;
   }
-}
+};
 
 void Daemon::setup_signal_handlers() {
   signal(SIGHUP, signal_handler);
   signal(SIGTERM, signal_handler);
-}
+};
 
 void Daemon::run_main_loop() {
   while (true) {
@@ -172,7 +175,7 @@ void Daemon::run_main_loop() {
 
     sleep(interval);
   }
-}
+};
 
 void Daemon::process_folders(
   const std::string& folder1,
@@ -181,10 +184,8 @@ void Daemon::process_folders(
   const std::string& subfolder
 ) {
   DIR* dir = opendir(folder1.c_str());
-
-  if (dir == NULL)
-  {
-    syslog(LOG_ERR, "Could not open directory %s", folder1.c_str());
+  if (dir == NULL) {
+    syslog(LOG_ERR, "Could not open directory %s: %s", folder1.c_str(), strerror(errno));
     return;
   }
 
@@ -193,8 +194,8 @@ void Daemon::process_folders(
   const std::string targetSubfolder = folder2 + "/" + subfolder;
   const std::string targetOthers = folder2 + "/OTHERS";
 
-  mkdir(targetSubfolder.c_str(), 0777);
-  mkdir(targetOthers.c_str(), 0777);
+  mkdir(targetSubfolder.c_str(), DIR_PERMISSIONS);
+  mkdir(targetOthers.c_str(), DIR_PERMISSIONS);
 
   while ((ent = readdir(dir)) != NULL) {
     if (ent->d_type != DT_REG)
@@ -207,13 +208,7 @@ void Daemon::process_folders(
     const std::string targetFile = targetFolder + "/" + fileName;
 
     if (rename(sourceFile.c_str(), targetFile.c_str()) != 0) {
-      syslog(
-        LOG_ERR,
-        "Error moving file %s to %s: %s",
-        sourceFile.c_str(),
-        targetFile.c_str(),
-        strerror(errno)
-      );
+      syslog(LOG_ERR, "Error moving file %s to %s: %s", sourceFile.c_str(), targetFile.c_str(), strerror(errno));
     }
   }
 

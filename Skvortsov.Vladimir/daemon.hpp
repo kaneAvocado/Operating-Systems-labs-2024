@@ -1,19 +1,21 @@
-#include <iostream>
+#include <csignal>
+#include <cstring>
+#include <dirent.h>
+#include <errno.h>
+#include <fcntl.h>
 #include <fstream>
+#include <iostream>
+#include <limits.h>
+#include <map>
+#include <regex>
 #include <sstream>
 #include <string>
-#include <map>
-#include <csignal>
 #include <sys/stat.h>
 #include <sys/types.h>
-#include <unistd.h>
-#include <syslog.h>
-#include <fcntl.h>
-#include <dirent.h>
-#include <cstring>
-#include <errno.h>
-#include <regex>
 #include <sys/wait.h>
+#include <syslog.h>
+#include <unistd.h>
+#include <vector>
 
 class Daemon {
   public:
@@ -42,6 +44,8 @@ class Daemon {
     void setup_signal_handlers();
     friend void signal_handler(int sig);
     void run_main_loop();
+    std::string remove_quotes(const std::string& str);
+    std::string resolve_path(const std::string& path);
 
     void process_folders(
       const std::string& folder1,
