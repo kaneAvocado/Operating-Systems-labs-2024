@@ -24,7 +24,7 @@ class Daemon {
       return instance;
     };
 
-    void run(const std::string &config_path, int interval);
+    void run(const std::string& config_path, int interval);
 
   private:
     Daemon() = default;
