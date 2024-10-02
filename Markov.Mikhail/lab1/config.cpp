@@ -4,34 +4,45 @@
 
 Data parse_line(const std::string& line)
 {
-    char separator = '"';
-    auto it1 = std::find(line.begin(), line.end(), separator);
+    std::vector<std::string> words;
+    std::string current_word;
+    bool in_quotes = false;
 
-    if (it1 == line.end())
-        throw std::runtime_error("line format in config file is incorrect!");
+    for (size_t i = 0; i < line.size(); ++i)
+    {
+        char c = line[i];
 
-    auto it2 = std::find(it1+1, line.end(), separator);
+        if (c == '"')
+        {
+            in_quotes = !in_quotes;
+            if (!in_quotes && !current_word.empty())
+            {
+                words.push_back(current_word);
+                current_word.clear(); 
+            }
+        }
+        else if (std::isspace(c))
+        {
+            if (!in_quotes)
+            {
+                if (!current_word.empty())
+                {
+                    words.push_back(current_word);
+                    current_word.clear(); 
+                }
+            }
+            else
+                current_word += c;
+        }
+        else
+            current_word += c;
+    }
 
-    if (it2 == line.end())
-        throw std::runtime_error("line format in config file is incorrect!");
+    if (!current_word.empty())
+        words.push_back(current_word);
 
-    std::string folder1 = std::string(it1+1, it2);
-
-    it1 = std::find(it2+1, line.end(), separator);
-
-    if (it1 == line.end())
-        throw std::runtime_error("line format in config file is incorrect!");
-
-    it2 = std::find(it1+1, line.end(), separator);
-
-    if (it2 == line.end())
-        throw std::runtime_error("line format in config file is incorrect!");
-
-    std::string folder2 = std::string(it1+1,it2);
-
-    int time = std::stoi(std::string(it2+1, line.end()));
-
-    return {folder1, folder2, time};
+    syslog(LOG_INFO, "line:%s,%s,%s", words[0].c_str(), words[1].c_str(), words[2].c_str()) ;
+    return {words[0], words[1], std::stoi(words[2])};
 }
 
 std::vector<Data> Config::read()
