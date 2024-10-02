@@ -98,7 +98,7 @@ void Daemon::create_pid_file() {
 }
 
 void Daemon::read_config() {
-  std::ifstream config_file(config_path);
+  std::ifstream config_file(current_dir + "/" + config_path);
 
   if (!config_file.is_open()) {
     syslog(LOG_ERR, "Could not open config file %s", config_path.c_str());
@@ -132,9 +132,6 @@ void Daemon::read_config() {
       }
       if (folder2.front() != '/') {
         folder2 = current_dir + "/" + folder2;
-      }
-      if (subfolder.front() != '/') {
-        subfolder = current_dir + "/" + subfolder;
       }
 
       config[folder1] = {folder2, {ext, subfolder}};

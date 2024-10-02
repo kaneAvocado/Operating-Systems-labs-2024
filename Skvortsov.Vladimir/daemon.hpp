@@ -30,6 +30,7 @@ class Daemon {
     Daemon(const Daemon&) = delete;
     Daemon& operator = (const Daemon&) = delete;
 
+    std::string current_dir;
     std::string config_path;
 
     std::map<std::string, std::pair<std::string, std::pair<std::string, std::string>>> config;
