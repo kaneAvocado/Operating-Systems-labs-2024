@@ -5,7 +5,7 @@ const char* PID_FILE = "/var/run/os-lab-daemon.pid";
 const mode_t DIR_PERMISSIONS = 0777;
 const int PID_STR_SIZE = 10;
 
-void Daemon::run(const std::string& config_path, int interval = 10) {
+void Daemon::run(const std::string& config_path, int interval = 5) {
   // Store the current working directory
   char cwd[PATH_MAX];
   if (getcwd(cwd, sizeof(cwd)) == NULL) {
