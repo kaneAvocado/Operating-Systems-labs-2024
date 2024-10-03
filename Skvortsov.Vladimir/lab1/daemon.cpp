@@ -9,7 +9,11 @@ void Daemon::run(const std::string& config_path, int interval = 5) {
   // Store the current working directory
   char cwd[PATH_MAX];
   if (getcwd(cwd, sizeof(cwd)) == NULL) {
-    syslog(LOG_ERR, "Could not get current working directory: %s", strerror(errno));
+    syslog(
+      LOG_ERR,
+      "Could not get current working directory: %s",
+      strerror(errno)
+    );
     exit(EXIT_FAILURE);
   }
   this->current_dir = std::string(cwd);
@@ -64,12 +68,22 @@ void Daemon::daemonize() {
 void Daemon::create_pid_file() {
   int pid_file_handle = open(PID_FILE, O_RDWR | O_CREAT, 0600);
   if (pid_file_handle == -1) {
-    syslog(LOG_ERR, "Could not open PID file %s: %s", PID_FILE, strerror(errno));
+    syslog(
+      LOG_ERR,
+      "Could not open PID file %s: %s",
+      PID_FILE,
+      strerror(errno)
+    );
     exit(EXIT_FAILURE);
   }
 
   if (lockf(pid_file_handle, F_TLOCK, 0) == -1) {
-    syslog(LOG_ERR, "Could not lock PID file %s: %s", PID_FILE, strerror(errno));
+    syslog(
+      LOG_ERR,
+      "Could not lock PID file %s: %s",
+      PID_FILE,
+      strerror(errno)
+    );
     exit(EXIT_FAILURE);
   }
 
@@ -78,7 +92,11 @@ void Daemon::create_pid_file() {
     int old_pid = atoi(old_pid_str);
 
     if (old_pid > 0 && kill(old_pid, 0) == 0) {
-      syslog(LOG_INFO, "Process with PID %d is already running, sending SIGTERM", old_pid);
+      syslog(
+        LOG_INFO,
+        "Process with PID %d is already running, sending SIGTERM",
+        old_pid
+      );
       kill(old_pid, SIGTERM);
       sleep(1);
     }
@@ -91,7 +109,12 @@ void Daemon::create_pid_file() {
   sprintf(str, "%d\n", getpid());
   write(pid_file_handle, str, strlen(str));
 
-  syslog(LOG_INFO, "PID file %s created successfully with PID %d", PID_FILE, getpid());
+  syslog(
+    LOG_INFO,
+    "PID file %s created successfully with PID %d",
+    PID_FILE,
+    getpid()
+  );
 
   close(pid_file_handle);
 };
@@ -100,7 +123,12 @@ void Daemon::read_config() {
   std::ifstream config_file(resolve_path(config_path));
 
   if (!config_file.is_open()) {
-    syslog(LOG_ERR, "Could not open config file %s: %s", config_path.c_str(), strerror(errno));
+    syslog(
+      LOG_ERR,
+      "Could not open config file %s: %s",
+      config_path.c_str(),
+      strerror(errno)
+    );
     exit(EXIT_FAILURE);
   }
 
@@ -185,11 +213,16 @@ void Daemon::process_folders(
 ) {
   DIR* dir = opendir(folder1.c_str());
   if (dir == NULL) {
-    syslog(LOG_ERR, "Could not open directory %s: %s", folder1.c_str(), strerror(errno));
+    syslog(
+      LOG_ERR,
+      "Could not open directory %s: %s",
+      folder1.c_str(),
+      strerror(errno)
+    );
     return;
   }
 
-  struct dirent *ent;
+  struct dirent* ent;
 
   const std::string targetSubfolder = folder2 + "/" + subfolder;
   const std::string targetOthers = folder2 + "/OTHERS";
@@ -208,7 +241,13 @@ void Daemon::process_folders(
     const std::string targetFile = targetFolder + "/" + fileName;
 
     if (rename(sourceFile.c_str(), targetFile.c_str()) != 0) {
-      syslog(LOG_ERR, "Error moving file %s to %s: %s", sourceFile.c_str(), targetFile.c_str(), strerror(errno));
+      syslog(
+        LOG_ERR,
+        "Error moving file %s to %s: %s",
+        sourceFile.c_str(),
+        targetFile.c_str(),
+        strerror(errno)
+      );
     }
   }
 
