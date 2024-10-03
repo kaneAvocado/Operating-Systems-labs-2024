@@ -14,7 +14,20 @@ int main(int argc, char* argv[]) {
     return EXIT_FAILURE;
   }
 
-  Daemon::get_instance().run(argv[1]);
+  const char* config_file_path = argv[1];
+
+  if (access(config_file_path, R_OK) != 0) {
+    std::cerr << "Error: Cannot access config file " << config_file_path << ": " << strerror(errno) << std::endl;
+    return EXIT_FAILURE;
+  }
+
+  try {
+    std::cout << "Starting daemon with config file: " << config_file_path << std::endl;
+    Daemon::get_instance().run(config_file_path);
+  } catch (const std::exception& e) {
+    std::cerr << "Error: " << e.what() << std::endl;
+    return EXIT_FAILURE;
+  }
 
   return EXIT_SUCCESS;
 };
