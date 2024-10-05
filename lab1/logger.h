@@ -10,12 +10,16 @@
 #include <fstream>
 
 namespace Logger {
+
 enum class LogLevel {
-    DEBUG,
-    INFO,
-    WARN,
-    ERROR,
-    CRITICAL
+    _LOG_EMERG = LOG_EMERG,     /* system is unusable */
+    _LOG_ALERT = LOG_ALERT,     /* action must be taken immediately */
+    _LOG_CRIT = LOG_CRIT,       /* critical conditions */
+    _LOG_ERR = LOG_ERR,         /* error conditions */
+    _LOG_WARNING = LOG_WARNING,	/* warning conditions */
+    _LOG_NOTICE = LOG_NOTICE,	/* normal but significant condition */
+    _LOG_INFO = LOG_INFO,       /* informational */
+    _LOG_DEBUG = LOG_DEBUG,     /* debug-level messages */
 };
 
 const std::string levels[] = {"DEBUG", "INFO", "WARN", "ERROR", "CRITICAL"};

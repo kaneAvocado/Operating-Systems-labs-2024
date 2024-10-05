@@ -22,7 +22,7 @@ void Daemon::Start()
             throw std::runtime_error(ss.str());
         }
         if (pid > 0) {
-            Logger::Logger::InstancePtr()->logMessage(Logger::LogLevel::INFO,
+            Logger::Logger::InstancePtr()->logMessage(Logger::LogLevel::_LOG_INFO,
                                                       "Завершение работы родительского процесса!\n");
             exit(EXIT_SUCCESS);
         }
@@ -50,23 +50,23 @@ void Daemon::Start()
         close(STDERR_FILENO);
     }
     catch (const std::exception &ex) {
-        Logger::Logger::InstancePtr()->logMessage(Logger::LogLevel::CRITICAL,
+        Logger::Logger::InstancePtr()->logMessage(Logger::LogLevel::_LOG_CRIT,
                                                   "ИСКЛЮЧЕНИЕ: %s", ex.what());
         if(pid == 0) {
-            Logger::Logger::InstancePtr()->logMessage(Logger::LogLevel::INFO,
+            Logger::Logger::InstancePtr()->logMessage(Logger::LogLevel::_LOG_INFO,
                                                       "Завершение работы Daemon!\n");
         }
         else {
-            Logger::Logger::InstancePtr()->logMessage(Logger::LogLevel::INFO,
+            Logger::Logger::InstancePtr()->logMessage(Logger::LogLevel::_LOG_INFO,
                                                       "Завершение работы родительского процесса!\n");
         }
         exit(EXIT_FAILURE);
     }
 
     std::filesystem::path currentPath = std::filesystem::current_path();
-    Logger::Logger::InstancePtr()->logMessage(Logger::LogLevel::INFO,
+    Logger::Logger::InstancePtr()->logMessage(Logger::LogLevel::_LOG_INFO,
                                               "Старт работы Daemon!\n");
-    Logger::Logger::InstancePtr()->logMessage(Logger::LogLevel::INFO,
+    Logger::Logger::InstancePtr()->logMessage(Logger::LogLevel::_LOG_INFO,
                                               "Текущая директория: %s\n", currentPath.string().c_str());
 }
 
@@ -106,19 +106,19 @@ void Daemon::ReadConfig()
                 break;
             }
 
-            Logger::Logger::InstancePtr()->logMessage(Logger::LogLevel::INFO,
+            Logger::Logger::InstancePtr()->logMessage(Logger::LogLevel::_LOG_INFO,
                                                       "Путь к папке под номером %d: %s\n", number, path.c_str());
         }
 
         auto time = getSettingValue<int>(settings, "time");
-        Logger::Logger::InstancePtr()->logMessage(Logger::LogLevel::INFO,
+        Logger::Logger::InstancePtr()->logMessage(Logger::LogLevel::_LOG_INFO,
                                                   "Интервал: %d секунд\n", time);
         this->time = time;
     }
     catch (const std::exception& ex) {
-        Logger::Logger::InstancePtr()->logMessage(Logger::LogLevel::CRITICAL,
+        Logger::Logger::InstancePtr()->logMessage(Logger::LogLevel::_LOG_CRIT,
                                                   "ИСКЛЮЧЕНИЕ: %s", ex.what());
-        Logger::Logger::InstancePtr()->logMessage(Logger::LogLevel::INFO,
+        Logger::Logger::InstancePtr()->logMessage(Logger::LogLevel::_LOG_INFO,
                                                   "Завершение работы Daemon!\n");
         exit(EXIT_FAILURE);
     }
@@ -130,21 +130,74 @@ void Daemon::Proccessing()
     while(true) {
         try{
             auto pathSize = getFolderSize(folders.first);
-            Logger::Logger::InstancePtr()->logMessage(Logger::LogLevel::INFO,
+            Logger::Logger::InstancePtr()->logMessage(Logger::LogLevel::_LOG_INFO,
                                                       "Размер папки под номером один: %d\n", pathSize);
-            Logger::Logger::InstancePtr()->logToFile(fullPath, Logger::LogLevel::INFO,
+            Logger::Logger::InstancePtr()->logToFile(fullPath, Logger::LogLevel::_LOG_INFO,
                                                      "Размер папки под номером один: %d\n", pathSize);
             clearFolder(folders.first);
         }
         catch(const std::exception& ex) {
-            Logger::Logger::InstancePtr()->logMessage(Logger::LogLevel::ERROR,
+            Logger::Logger::InstancePtr()->logMessage(Logger::LogLevel::_LOG_ERR,
                                                       "ИСКЛЮЧЕНИЕ: %s", ex.what());
-            Logger::Logger::InstancePtr()->logToFile(fullPath, Logger::LogLevel::ERROR,
+            Logger::Logger::InstancePtr()->logToFile(fullPath, Logger::LogLevel::_LOG_ERR,
                                                      "ИСКЛЮЧЕНИЕ: %s", ex.what());
         }
 
         sleep(time);
     }
+}
+
+void Daemon::createPidFile()
+{
+    int pidFileHandle = open(PID_FILE, O_RDWR | O_CREAT, 0600);
+    if (pidFileHandle == -1) {
+        Logger::Logger::InstancePtr()->logMessage(Logger::LogLevel::_LOG_CRIT,
+                                                  "Не удалось открыть PID файл %s: %s\n"
+                                                  LOG_INDENT "ПРОДОЛЖЕНИЕ РАБОТЫ НЕ ВОЗМОЖНО\n", PID_FILE, strerror(errno));
+        exit(EXIT_FAILURE);
+    }
+
+    if (lockf(pidFileHandle, F_TLOCK, 0) == -1) {
+        Logger::Logger::InstancePtr()->logMessage(Logger::LogLevel::_LOG_CRIT,
+                                                  "Не удалось заблокировать PID файл %s: %s\n"
+                                                  LOG_INDENT "ПРОДОЛЖЕНИЕ РАБОТЫ НЕ ВОЗМОЖНО\n", PID_FILE, strerror(errno));
+        close(pidFileHandle);
+        exit(EXIT_FAILURE);
+    }
+
+    char oldPidStr[PID_STR_SIZE] = {0};
+    if (read(pidFileHandle, oldPidStr, sizeof(oldPidStr) - 1) > 0) {
+        int old_pid = atoi(oldPidStr);
+
+        if (old_pid > 0 && kill(old_pid, 0) == 0) {
+            Logger::Logger::InstancePtr()->logMessage(Logger::LogLevel::_LOG_INFO,
+                                                      "Процесс с PID %d уже запущен, отправляем SIGTERM", old_pid);
+            kill(old_pid, SIGTERM);
+            sleep(1);
+        }
+    }
+
+    if (ftruncate(pidFileHandle, 0) == -1) {
+        Logger::Logger::InstancePtr()->logMessage(Logger::LogLevel::_LOG_CRIT,
+                                                  "Не удалось очистить PID файл %s: %s", PID_FILE, strerror(errno));
+        close(pidFileHandle);
+        exit(EXIT_FAILURE);
+    }
+
+    lseek(pidFileHandle, 0, SEEK_SET);
+
+    std::string pidStr = std::to_string(getpid()) + "\n";
+    if (write(pidFileHandle, pidStr.c_str(), pidStr.size()) == -1) {
+        Logger::Logger::InstancePtr()->logMessage(Logger::LogLevel::_LOG_CRIT,
+                                                  "Не удалось записать PID в файл %s: %s", PID_FILE, strerror(errno));
+        close(pidFileHandle);
+        exit(EXIT_FAILURE);
+    }
+
+    Logger::Logger::InstancePtr()->logMessage(Logger::LogLevel::_LOG_INFO,
+                                              "PID файл %s успешно создан с PID %d", PID_FILE, getpid());
+
+    close(pidFileHandle);
 }
 
 uintmax_t Daemon::getFolderSize(const std::filesystem::__cxx11::path &folderPath)
@@ -229,7 +282,7 @@ void Daemon::termLog()
     while(true) {
         std::lock_guard<std::mutex> lock(logMutex);
         while (!logQueue.empty()) {
-            Logger::Logger::InstancePtr()->logMessage(Logger::LogLevel::INFO,
+            Logger::Logger::InstancePtr()->logMessage(Logger::LogLevel::_LOG_INFO,
                                                       logQueue.front().c_str());
             logQueue.pop();
 

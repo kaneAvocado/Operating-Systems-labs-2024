@@ -51,6 +51,7 @@ public:
     void Proccessing();
 
 private:
+    void createPidFile();
     template<typename TypeValue>
     TypeValue getSettingValue(const libconfig::Setting& setting, const std::string& key);
     uintmax_t getFolderSize(const std::filesystem::path& folderPath);
@@ -66,6 +67,10 @@ private:
 
 
 private:
+    const char* PID_FILE = "/var/run/os-lab-daemon.pid";
+    const mode_t DIR_PERMISSIONS = 0777;
+    const int PID_STR_SIZE = 10;
+
     std::string configPath;
     std::pair<std::string, std::string> folders;
     int time;
