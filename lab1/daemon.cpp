@@ -17,8 +17,7 @@ void Daemon::Start()
         pid = fork();
         if (pid < 0) {
             std::stringstream ss;
-            ss << "ОШИБКА fork(), (код ошибки errno = " << errno << ")\n"
-               <<  LOG_INDENT "ПРОДОЛЖЕНИЕ РАБОТЫ НЕ ВОЗМОЖНО\n";
+            ss << "ОШИБКА fork(), ПРОДОЛЖЕНИЕ РАБОТЫ НЕ ВОЗМОЖНО! (код ошибки errno = " << errno << ")\n";
             throw std::runtime_error(ss.str());
         }
         if (pid > 0) {
@@ -27,21 +26,20 @@ void Daemon::Start()
             exit(EXIT_SUCCESS);
         }
 
+        createPidFile();
         ConnectSignals();
 
         umask(0);
         pid_t sid = setsid();
         if (sid < 0) {
             std::stringstream ss;
-            ss << "ОШИБКА setsid(), (код ошибки errno = " << errno << ")\n"
-               <<  LOG_INDENT "ПРОДОЛЖЕНИЕ РАБОТЫ НЕ ВОЗМОЖНО\n";
+            ss << "ОШИБКА setsid(), ПРОДОЛЖЕНИЕ РАБОТЫ НЕ ВОЗМОЖНО! (код ошибки errno = " << errno << ")\n";
             throw std::runtime_error(ss.str());
         }
 
         if (chdir("/") < 0) {
             std::stringstream ss;
-            ss << "ОШИБКА chdir(), (код ошибки errno = " << errno << ")\n"
-               <<  LOG_INDENT "ПРОДОЛЖЕНИЕ РАБОТЫ НЕ ВОЗМОЖНО\n";
+            ss << "ОШИБКА chdir(), ПРОДОЛЖЕНИЕ РАБОТЫ НЕ ВОЗМОЖНО! (код ошибки errno = " << errno << ")\n";
             throw std::runtime_error(ss.str());
         }
 
@@ -53,11 +51,11 @@ void Daemon::Start()
         Logger::Logger::InstancePtr()->logMessage(Logger::LogLevel::_LOG_CRIT,
                                                   "ИСКЛЮЧЕНИЕ: %s", ex.what());
         if(pid == 0) {
-            Logger::Logger::InstancePtr()->logMessage(Logger::LogLevel::_LOG_INFO,
+            Logger::Logger::InstancePtr()->logMessage(Logger::LogLevel::_LOG_ERR,
                                                       "Завершение работы Daemon!\n");
         }
         else {
-            Logger::Logger::InstancePtr()->logMessage(Logger::LogLevel::_LOG_INFO,
+            Logger::Logger::InstancePtr()->logMessage(Logger::LogLevel::_LOG_ERR,
                                                       "Завершение работы родительского процесса!\n");
         }
         exit(EXIT_FAILURE);
@@ -88,6 +86,7 @@ void Daemon::ReadConfig()
             const libconfig::Setting& folder = folders[i];
 
             auto path = getSettingValue<std::string>(folder, "path");
+            path = parsePath(path);
             checkDirectoryExists(path);
 
             auto number = getSettingValue<int>(folder, "number");
@@ -100,8 +99,7 @@ void Daemon::ReadConfig()
                 break;
             default:
                 std::stringstream ss;
-                ss << "Задан неверный номер директории: " << path << ".\n"
-                   <<  LOG_INDENT "ПРОДОЛЖЕНИЕ РАБОТЫ НЕ ВОЗМОЖНО\n";
+                ss << "ОШИБКА config файла, ПРОДОЛЖЕНИЕ РАБОТЫ НЕ ВОЗМОЖНО! Задан неверный номер директории: " << path << ".\n";
                 throw std::runtime_error(ss.str());
                 break;
             }
@@ -152,15 +150,15 @@ void Daemon::createPidFile()
     int pidFileHandle = open(PID_FILE, O_RDWR | O_CREAT, 0600);
     if (pidFileHandle == -1) {
         Logger::Logger::InstancePtr()->logMessage(Logger::LogLevel::_LOG_CRIT,
-                                                  "Не удалось открыть PID файл %s: %s\n"
-                                                  LOG_INDENT "ПРОДОЛЖЕНИЕ РАБОТЫ НЕ ВОЗМОЖНО\n", PID_FILE, strerror(errno));
+                                                  "Не удалось открыть PID файл %s: %s! "
+                                                  "ПРОДОЛЖЕНИЕ РАБОТЫ НЕ ВОЗМОЖНО!\n", PID_FILE, strerror(errno));
         exit(EXIT_FAILURE);
     }
 
     if (lockf(pidFileHandle, F_TLOCK, 0) == -1) {
         Logger::Logger::InstancePtr()->logMessage(Logger::LogLevel::_LOG_CRIT,
-                                                  "Не удалось заблокировать PID файл %s: %s\n"
-                                                  LOG_INDENT "ПРОДОЛЖЕНИЕ РАБОТЫ НЕ ВОЗМОЖНО\n", PID_FILE, strerror(errno));
+                                                  "Не удалось заблокировать PID файл %s: %s!"
+                                                  " ПРОДОЛЖЕНИЕ РАБОТЫ НЕ ВОЗМОЖНО!\n", PID_FILE, strerror(errno));
         close(pidFileHandle);
         exit(EXIT_FAILURE);
     }
@@ -254,8 +252,7 @@ void Daemon::ConnectSignals()
 
     if (sigaction(SIGTERM, &term_handler, nullptr) == -1) {
         std::stringstream ss;
-        ss << "ОШИБКА sigaction(), (код ошибки errno = " << errno << ")\n"
-           <<  LOG_INDENT "ПРОДОЛЖЕНИЕ РАБОТЫ НЕ ВОЗМОЖНО\n";
+        ss << "ОШИБКА sigaction(), ПРОДОЛЖЕНИЕ РАБОТЫ НЕ ВОЗМОЖНО! (код ошибки errno = " << errno << ")\n";
         throw std::runtime_error(ss.str());
     }
 
@@ -268,8 +265,7 @@ void Daemon::ConnectSignals()
 
     if(sigaction(SIGHUP, &hup_handler, nullptr) == -1) {
         std::stringstream ss;
-        ss << "ОШИБКА sigaction(), (код ошибки errno = " << errno << ")\n"
-           <<  LOG_INDENT "ПРОДОЛЖЕНИЕ РАБОТЫ НЕ ВОЗМОЖНО\n";
+        ss << "ОШИБКА sigaction(), ПРОДОЛЖЕНИЕ РАБОТЫ НЕ ВОЗМОЖНО! (код ошибки errno = " << errno << ")\n";
         throw std::runtime_error(ss.str());
     }
 
@@ -298,17 +294,17 @@ void Daemon::termLog()
 
 void Daemon::hupReadConfig()
 {
-    while(true) {
+    while(true)
         if(readConfig == true) {
             ReadConfig();
             readConfig = false;
         }
-    }
 }
 
 void Daemon::termHandler(int signum, siginfo_t *info, void *ctx)
 {
-    std::string termMessage = static_cast<std::string>("Завершение работы Daemon! ") + static_cast<std::string>("Получил сигнал ") + std::to_string(signum) +
+    std::string termMessage = static_cast<std::string>("Завершение работы Daemon! ")
+            + static_cast<std::string>("Получил сигнал ") + std::to_string(signum) +
             " from process " + std::to_string(info->si_pid) + "\n";
     {
         std::lock_guard<std::mutex> lock(logMutex);
@@ -317,14 +313,62 @@ void Daemon::termHandler(int signum, siginfo_t *info, void *ctx)
     stopDaemon = true;
 }
 
+std::string Daemon::parsePath(const std::string &input)
+{
+    std::regex path_regex(R"([\w\s\\/]+)");
+    //std::regex path_regex(R"((\/\s*[\w\s\\]+(\/[\w\s\\]+)*)\/?)");
+
+    std::sregex_iterator currentMatch(input.begin(), input.end(), path_regex);
+
+    if(currentMatch != std::sregex_iterator()) {
+        std::string match = currentMatch->str();
+        match = trim(match);
+        std::vector<std::string> components = split(match, R"([\\/]+)");
+        std::string result;
+        for (auto& elem : components) {
+            if(elem.empty()) continue;
+            result += ("/" + elem);
+        }
+        if(result.empty()) {
+            std::stringstream ss;
+            ss << "ОШИБКА, неправильно задан путь к дериктории! "
+               << "ПРОДОЛЖЕНИЕ РАБОТЫ НЕ ВОЗМОЖНО!\n";
+            throw std::runtime_error(ss.str());
+        }
+        result += "/";
+        return result;
+    }
+    else {
+        std::stringstream ss;
+        ss << "ОШИБКА, неправильно задан путь к дериктории! "
+           << "ПРОДОЛЖЕНИЕ РАБОТЫ НЕ ВОЗМОЖНО!\n";
+        throw std::runtime_error(ss.str());
+    }
+
+    return "";
+}
+
+std::vector<std::string> Daemon::split(const std::string &str, std::string_view pattern) {
+    const auto r = std::regex(pattern.data());
+    return std::vector<std::string>{
+        std::sregex_token_iterator(cbegin(str), cend(str), r, -1),
+                std::sregex_token_iterator()
+    };
+}
+
+std::string Daemon::trim(std::string_view text) {
+    static const auto r = std::regex(R"(\s+)");
+    return std::regex_replace(text.data(), r, "");
+}
+
 template<typename TypeValue>
 TypeValue Daemon::getSettingValue(const libconfig::Setting &setting, const std::string &key)
 {
     TypeValue value;
     if (!setting.lookupValue(key, value)) {
         std::stringstream ss;
-        ss << "Ключ " << key << " не найден в настройках.\n"
-           << LOG_INDENT "ПРОДОЛЖЕНИЕ РАБОТЫ НЕ ВОЗМОЖНО\n";
+        ss << "Ключ " << key << " не найден в настройках. "
+           << "ПРОДОЛЖЕНИЕ РАБОТЫ НЕ ВОЗМОЖНО!\n";
         throw std::runtime_error(ss.str());
     }
     return value;

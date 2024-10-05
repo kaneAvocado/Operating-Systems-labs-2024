@@ -11,6 +11,7 @@
 #include <unistd.h>
 #include <syslog.h>
 #include <string.h>
+#include <string>
 #include <iomanip>
 #include <cstdlib>
 #include <filesystem>
@@ -23,10 +24,11 @@
 #include <queue>
 #include <functional>
 #include <cstring>
+#include <regex>
+#include <string_view>
 
 #include "logger.h"
 
-#define LOG_INDENT "                   "
 
 class Daemon {
 
@@ -65,9 +67,13 @@ private:
         readConfig = true;
     }
 
+    std::string parsePath(const std::string& path);
+    std::vector<std::string> split(const std::string& str, std::string_view pattern);
+    std::string trim(std::string_view text);
+
 
 private:
-    const char* PID_FILE = "/var/run/os-lab-daemon.pid";
+    const char* PID_FILE = "/var/run/daemon.pid";
     const mode_t DIR_PERMISSIONS = 0777;
     const int PID_STR_SIZE = 10;
 

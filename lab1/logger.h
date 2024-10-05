@@ -22,7 +22,7 @@ enum class LogLevel {
     _LOG_DEBUG = LOG_DEBUG,     /* debug-level messages */
 };
 
-const std::string levels[] = {"DEBUG", "INFO", "WARN", "ERROR", "CRITICAL"};
+const std::string levels[] = { "EMERG", "ALERT", "CRITICAL", "ERROR", "WARNING", "NOTICE", "INFO", "DEBUG" };
 
 class Logger {
 public:
