@@ -235,12 +235,15 @@ void Daemon::clearFolder(const std::filesystem::__cxx11::path &folderPath)
     }
 }
 
-void Daemon::checkDirectoryExists(const std::string &dirPath)
+void Daemon::checkDirectoryExists(std::string &dirPath)
 {
     namespace fs = std::filesystem;
 
     if (!fs::exists(dirPath) || !fs::is_directory(dirPath)) {
-        throw std::runtime_error("Директория \"" + dirPath + "\" не существует.\n");
+        dirPath = configPath.parent_path().string() + dirPath;
+        if (!fs::exists(dirPath) || !fs::is_directory(dirPath)){
+            throw std::runtime_error("Директория \"" + dirPath + "\" не существует.\n");
+        }
     }
 }
 
