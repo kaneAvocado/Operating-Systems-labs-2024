@@ -240,9 +240,10 @@ void Daemon::checkDirectoryExists(std::string &dirPath)
     namespace fs = std::filesystem;
 
     if (!fs::exists(dirPath) || !fs::is_directory(dirPath)) {
+        const std::string path = dirPath;
         dirPath = configPath.parent_path().string() + dirPath;
         if (!fs::exists(dirPath) || !fs::is_directory(dirPath)){
-            throw std::runtime_error("Директория \"" + dirPath + "\" не существует.\n");
+            throw std::runtime_error("Директория \"" + path + "\" не существует.\n");
         }
     }
 }
