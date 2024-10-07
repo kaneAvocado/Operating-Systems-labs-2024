@@ -63,7 +63,7 @@ static void handle_events(int fd, const std::vector<int>& wd, const std::vector<
     }
 }
 
-int start_monitor(const std::vector<std::string>& path_list)
+inline int start_monitor(const std::vector<std::string>& path_list)
 {
     struct pollfd fds[1];
     nfds_t nfds;
@@ -130,4 +130,3 @@ int start_monitor(const std::vector<std::string>& path_list)
     close(fd);
     return 0;
 }
-
