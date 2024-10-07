@@ -12,10 +12,10 @@
 #include <vector>
 #include <fstream>
 
+#include "monitor.cpp"
+
 #define IDENTITY "my_daemon"
 #define PID_FILE "/var/run/" IDENTITY ".pid"
-
-extern int start_monitor(int count, char** path_list);
 
 static char config_file[PATH_MAX];
 
@@ -181,13 +181,8 @@ int daemon_main()
         syslog(LOG_DEBUG, "Retrieved path: '%s'", line.c_str());
     }
 
-    // Convert path_list to char* array
-    std::vector<char*> path_ptr_list;
-    for (auto& path : path_list)
-        path_ptr_list.push_back(&path[0]);
-
     // Start monitor
-    int ret = start_monitor(path_ptr_list.size(), path_ptr_list.data());
+    int ret = start_monitor(path_list);
     if (ret == -1)
     {
         syslog(LOG_DEBUG, "start_monitor failed");
@@ -233,4 +228,3 @@ int main()
     std::cout << "Parent terminated" << std::endl;
     return 0;
 }
-
