@@ -20,23 +20,26 @@ Daemon& Daemon::getInstance() {
 }
 
 Daemon::Daemon()
-    : running(true), interval(20)
+
+    : running(true), interval(20), newConfPath()
 {}
 
 Daemon::~Daemon() {}
 
-void Daemon::run(const std::string& configFile, const std::string& pidFile) {
+void Daemon::run(const std::string& configFile, const std::string& pidFile, const std::string& current_path) {
     openlog("daemon", LOG_PID, LOG_DAEMON);
     syslog(LOG_NOTICE, "Daemon started.");
-
+    newConfPath = current_path;
+    syslog(LOG_INFO, "%s", current_path.c_str());
+    syslog(LOG_INFO, "%s", newConfPath.c_str());
     // Создание PID-файла
-    if (!createPidFile(pidFile)) {
+    if (!createPidFile((newConfPath/pidFile))) {
         syslog(LOG_ERR, "Не удалось создать PID-файл, завершение работы.");
         exit(EXIT_FAILURE);
     }
 
     // Загрузка конфигурации
-    loadConfig(configFile);
+    loadConfig((newConfPath/configFile));
 
     // Основной цикл работы демона
     while (running) {
@@ -45,7 +48,7 @@ void Daemon::run(const std::string& configFile, const std::string& pidFile) {
     }
 
     // Очистка и завершение
-    removePidFile(pidFile);
+    removePidFile((newConfPath/pidFile));
     syslog(LOG_NOTICE, "Daemon terminated.");
     closelog();
 }
@@ -53,7 +56,7 @@ void Daemon::run(const std::string& configFile, const std::string& pidFile) {
 void Daemon::handleSignal(int signum) {
     if (signum == SIGHUP) {
         syslog(LOG_NOTICE, "Получен сигнал SIGHUP, перезагрузка конфигурации.");
-        Daemon::getInstance().loadConfig(Daemon::getInstance().configPath);
+        Daemon::getInstance().loadConfig((Daemon::getInstance().newConfPath/Daemon::getInstance().configPath));
     } else if (signum == SIGTERM) {
         syslog(LOG_NOTICE, "Получен сигнал SIGTERM, завершение работы.");
         Daemon::getInstance().running = false;
@@ -75,7 +78,7 @@ void Daemon::loadConfig(const std::string& configFile) {
 
     std::string folder, ignFile;
     while (file >> folder >> ignFile) {
-        config.emplace_back(folder, ignFile);
+        config.emplace_back((Daemon::getInstance().newConfPath/folder), ignFile);
     }
     file.close();
 }

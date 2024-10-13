@@ -1,2 +1,3 @@
-/home/pshkuropat/OpSys/lab1/test/folder1 ignfile1.txt
-/home/pshkuropat/OpSys/lab1/test/folder2 ignfile2.txt
+test/folder1 ignfile1.txt
+test/folder2 ignfile2.txt
+

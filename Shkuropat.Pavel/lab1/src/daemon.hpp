@@ -5,6 +5,8 @@
 #include <string>
 #include <vector>
 #include <utility>
+#include <filesystem>
+
 
 class Daemon {
 public:
@@ -12,10 +14,12 @@ public:
     static Daemon& getInstance();
 
     // Запуск демона с указанием конфигурационного файла и PID-файла
-    void run(const std::string& configFile, const std::string& pidFile);
+    void run(const std::string& configFile, const std::string& pidFile, const std::string& current_path);
 
     // Обработчик сигналов
     static void handleSignal(int signum);
+
+    
 
 private:
     // Конструктор и деструктор
@@ -39,6 +43,7 @@ private:
     bool running;
     int interval; // Интервал в секундах между действиями
     std::string configPath;
+    std::filesystem::path newConfPath;
     std::vector<std::pair<std::string, std::string>> config;
 };
 

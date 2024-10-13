@@ -6,6 +6,7 @@
 #include <unistd.h>
 #include <string>
 #include <signal.h> 
+#include <filesystem>
 
 bool createPidFile(const std::string& pidFile) {
     std::ifstream pidFileStream(pidFile);
