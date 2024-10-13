@@ -13,7 +13,8 @@
 #include <fstream>
 #include <thread>
 #include "config.hpp"
-#include "openssl/md5.h"
+#include <openssl/evp.h>
+
 
 class Daemon
 {

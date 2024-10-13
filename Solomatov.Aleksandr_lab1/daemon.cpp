@@ -1,4 +1,5 @@
 #include "daemon.hpp"
+#include <cstring>
 
 
 void signal_handler(int sig)
@@ -15,29 +16,47 @@ void signal_handler(int sig)
 }
 
 // Функция для вычисления MD5
-std::string calculate_md5(const std::string& filepath)
-{
-    std::ifstream file(filepath, std::ios::binary);
-    if (!file)
-        throw std::runtime_error("Failed to open file: " + filepath);
+std::string calculate_md5(const std::string& filename) {
+    unsigned char result[EVP_MAX_MD_SIZE];  // Хэш результат
+    unsigned int result_len = 0;
 
-    MD5_CTX md5Context;
-    MD5_Init(&md5Context);
+    EVP_MD_CTX* mdctx = EVP_MD_CTX_new();  // Создаем контекст
+    if (mdctx == nullptr) {
+        throw std::runtime_error("Failed to create MD5 context.");
+    }
 
-    char buffer[1024];
-    while (file.read(buffer, sizeof(buffer)))
-        MD5_Update(&md5Context, buffer, file.gcount());
+    const EVP_MD* md = EVP_md5();  // Используем MD5
+    if (!EVP_DigestInit_ex(mdctx, md, nullptr)) {
+        EVP_MD_CTX_free(mdctx);
+        throw std::runtime_error("Failed to initialize MD5 digest.");
+    }
 
-    // Обрабатываем остаток данных
-    MD5_Update(&md5Context, buffer, file.gcount());
+    std::ifstream file(filename, std::ios::binary);
+    if (!file) {
+        EVP_MD_CTX_free(mdctx);
+        throw std::runtime_error("Failed to open file: " + filename);
+    }
 
-    unsigned char result[MD5_DIGEST_LENGTH];
-    MD5_Final(result, &md5Context);
+    char buffer[4096];
+    while (file.read(buffer, sizeof(buffer)) || file.gcount() > 0) {
+        if (!EVP_DigestUpdate(mdctx, buffer, file.gcount())) {
+            EVP_MD_CTX_free(mdctx);
+            throw std::runtime_error("Failed to update MD5 digest.");
+        }
+    }
 
+    if (!EVP_DigestFinal_ex(mdctx, result, &result_len)) {
+        EVP_MD_CTX_free(mdctx);
+        throw std::runtime_error("Failed to finalize MD5 digest.");
+    }
+
+    EVP_MD_CTX_free(mdctx);  // Освобождаем ресурсы
+
+    // Преобразуем результат в строку с hex представлением
     std::ostringstream oss;
-    for (int i = 0; i < MD5_DIGEST_LENGTH; ++i)
+    for (unsigned int i = 0; i < result_len; ++i) {
         oss << std::hex << std::setw(2) << std::setfill('0') << (int)result[i];
-
+    }
     return oss.str();
 }
 
