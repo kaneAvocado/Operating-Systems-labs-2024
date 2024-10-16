@@ -28,4 +28,4 @@ cd "$initial_dir" || { echo "Failed to exit build directory."; exit 1; }
 
 sudo "$initial_dir/build/daemon" "$initial_dir/config.txt"
 
-sudo rm -rf "$initial_dir/build"
+sudo rm -rf "$initial_dir/build/daemon"

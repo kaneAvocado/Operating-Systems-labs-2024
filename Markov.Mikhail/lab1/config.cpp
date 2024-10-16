@@ -41,8 +41,15 @@ Data parse_line(const std::string& line)
     if (!current_word.empty())
         words.push_back(current_word);
 
-    syslog(LOG_INFO, "line:%s,%s,%s", words[0].c_str(), words[1].c_str(), words[2].c_str()) ;
-    return {words[0], words[1], std::stoi(words[2])};
+    if(words.size() == 3)
+    {
+        syslog(LOG_INFO, "line:%s,%s,%s", words[0].c_str(), words[1].c_str(), words[2].c_str()) ;
+        return {words[0], words[1], std::stoi(words[2])};
+    }
+    else    
+    {
+        throw(std::runtime_error("incorrect format"));
+    }
 }
 
 std::vector<Data> Config::read()
@@ -65,7 +72,6 @@ std::vector<Data> Config::read()
         catch (const std::exception &e)
         {
             syslog(LOG_ERR, "Error while parsing %s: %s", line.c_str(), e.what());
-            exit(EXIT_FAILURE);
         }
     }
     in_file.close();

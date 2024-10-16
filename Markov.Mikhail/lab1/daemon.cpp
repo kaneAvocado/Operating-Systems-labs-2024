@@ -35,8 +35,7 @@ void Daemon::replace_folder(const Data & data)
         std::filesystem::create_directory(cur_path2);
 
     for (const auto &entry : std::filesystem::directory_iterator(cur_path1))
-        if (entry.is_regular_file())
-            std::filesystem::rename(entry.path(), cur_path2 / entry.path().filename());
+        std::filesystem::rename(entry.path(), cur_path2 / entry.path());
 
     std::string message = "Files moved successfully from " + 
         std::string(cur_path1.c_str()) + " to " + std::string(cur_path2.c_str());
@@ -132,6 +131,7 @@ void Daemon::run(const std::filesystem::path & current_dir, const std::string & 
         {
             got_sighup = 0;
             syslog(LOG_INFO, "Re-read config file");
+            open_config_file();
         }
 
         if(got_sigterm == 1)
