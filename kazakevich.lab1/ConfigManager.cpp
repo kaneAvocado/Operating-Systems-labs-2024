@@ -20,7 +20,6 @@ ConfigManager* ConfigManager::getInstance() {
 	return ConfigManager::instance_ptr;
 }
 
-// Функция для удаления пробелов в начале и конце строки
 std::string ConfigManager::trim(const std::string& str) {
     size_t first = str.find_first_not_of(' ');
     if (first == std::string::npos) return "";
@@ -29,7 +28,6 @@ std::string ConfigManager::trim(const std::string& str) {
 }
 
 std::string ConfigManager::resolve_path(const std::string& path) {
-    // std::cerr << "current dir " << current_dir << std::endl;
     if (path.front() != '/') {
         return current_dir + "/" + path;
     }
@@ -41,7 +39,7 @@ bool ConfigManager::loadConfig()
 	std::ifstream configReader(resolve_path(configPath));
 	if (!configReader.is_open()) {
         //std::cerr << "Can not open conf file " << resolve_path(configPath).c_str() << std::endl;
-        syslog(LOG_WARNING, "Не удалось открыть файл конфигурации: %s", configPath.c_str());
+        syslog(LOG_WARNING, "Can not open config file: %s", configPath.c_str());
         return false;
 	}
 
@@ -49,29 +47,24 @@ bool ConfigManager::loadConfig()
     std::string line;
 
     while (configReader >> line) {
-        // Пропускаем пустые строки и комментарии
         if (line.empty() || line[0] == '#') {
             continue;
         }
-
-        // Ищем символ "="
+	    
         size_t delimiterPos = line.find('=');
         if (delimiterPos == std::string::npos) {
-            syslog(LOG_WARNING, "Неправильный формат строки: %s", line.c_str());
+            syslog(LOG_WARNING, "ГЌГҐГЇГ°Г ГўГЁГ«ГјГ­Г»Г© ГґГ®Г°Г¬Г ГІ Г±ГІГ°Г®ГЄГЁ: %s", line.c_str());
             continue;
         }
 
-        // Разделяем строку на имя параметра и значение
         std::string paramName = trim(line.substr(0, delimiterPos));
         std::string paramValue = trim(line.substr(delimiterPos + 1));
 
-        // Сохраняем в карту
         configMap[paramName] = paramValue;
     }
 
     configReader.close();
 
-    // Преобразуем значения из карты в структуру
     if (configMap.find("pidfilePath") != configMap.end()) {
         configParams.pidfilePath = resolve_path(configMap["pidfilePath"]);
     }
@@ -83,7 +76,7 @@ bool ConfigManager::loadConfig()
             configParams.interval = std::stoi(configMap["interval"]);
         }
         catch (const std::exception& e) {
-            syslog(LOG_WARNING, "Ошибка преобразования параметра interval: %s", e.what());
+            syslog(LOG_WARNING, "ГЋГёГЁГЎГЄГ  ГЇГ°ГҐГ®ГЎГ°Г Г§Г®ГўГ Г­ГЁГї ГЇГ Г°Г Г¬ГҐГІГ°Г  interval: %s", e.what());
         }
     }
     return true;
@@ -98,7 +91,7 @@ void ConfigManager::setConfigPath(std::string path)
 {
     char buffer[PATH_MAX];
     if (getcwd(buffer, PATH_MAX) == nullptr) {
-        syslog(LOG_ERR, "Ошибка получения текущей дирректории");
+        syslog(LOG_ERR, "ГЋГёГЁГЎГЄГ  ГЇГ®Г«ГіГ·ГҐГ­ГЁГї ГІГҐГЄГіГ№ГҐГ© Г¤ГЁГ°Г°ГҐГЄГІГ®Г°ГЁГЁ");
         return exit(EXIT_FAILURE);
     }
     current_dir = std::string(buffer);
