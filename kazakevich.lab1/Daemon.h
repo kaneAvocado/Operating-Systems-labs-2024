@@ -17,7 +17,7 @@ class Daemon
 {
 public:
 	static Daemon* getInstance();
-	void run(const std::string configPath);
+	void run();
 	static void handleSignal(int signum);
 
 private:

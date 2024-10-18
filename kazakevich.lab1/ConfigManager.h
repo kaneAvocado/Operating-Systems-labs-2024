@@ -30,6 +30,7 @@ private:
 	ConfigParams configParams;
 
 	std::string trim(const std::string& str);
-
+	std::string resolve_path(const std::string& path);
+	std::string current_dir;
 };
 

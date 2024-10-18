@@ -89,6 +89,5 @@ bool PidfileManager::writePidToFile() const {
 
 bool PidfileManager::processExists(pid_t pid) const {
     // Имплементация проверки существования процесса
-    // Использовать kill с параметром 0, чтобы проверить существование
     return (kill(pid, 0) == 0);
 }

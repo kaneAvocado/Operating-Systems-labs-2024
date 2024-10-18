@@ -15,9 +15,12 @@ int main(int argc, char* argv[]) {
     signal(SIGHUP, Daemon::handleSignal);
     signal(SIGTERM, Daemon::handleSignal);
 
+    ConfigManager* configManager = ConfigManager::getInstance();
+    configManager->setConfigPath(argv[1]);
+
     daemonize();
 
-    Daemon::getInstance()->run(argv[1]);
+    Daemon::getInstance()->run();
 
 	return EXIT_SUCCESS;
 }

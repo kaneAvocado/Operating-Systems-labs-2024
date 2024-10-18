@@ -4,7 +4,12 @@
 #include <sstream>
 #include <string>
 #include <unordered_map>
+#include <syslog.h>
+#include <linux/limits.h>
+#include <unistd.h>
+#include <filesystem>
 
+namespace fs = std::filesystem;
 
 ConfigManager* ConfigManager::instance_ptr = nullptr;
 
@@ -23,11 +28,20 @@ std::string ConfigManager::trim(const std::string& str) {
     return str.substr(first, last - first + 1);
 }
 
+std::string ConfigManager::resolve_path(const std::string& path) {
+    // std::cerr << "current dir " << current_dir << std::endl;
+    if (path.front() != '/') {
+        return current_dir + "/" + path;
+    }
+    return path;
+};
+
 bool ConfigManager::loadConfig()
 {
-	std::ifstream configReader(configPath);
+	std::ifstream configReader(resolve_path(configPath));
 	if (!configReader.is_open()) {
-        std::cerr << "Не удалось открыть файл конфигурации: " << configPath << std::endl;
+        //std::cerr << "Can not open conf file " << resolve_path(configPath).c_str() << std::endl;
+        syslog(LOG_WARNING, "Не удалось открыть файл конфигурации: %s", configPath.c_str());
         return false;
 	}
 
@@ -43,7 +57,7 @@ bool ConfigManager::loadConfig()
         // Ищем символ "="
         size_t delimiterPos = line.find('=');
         if (delimiterPos == std::string::npos) {
-            std::cerr << "Неправильный формат строки: " << line << std::endl;
+            syslog(LOG_WARNING, "Неправильный формат строки: %s", line.c_str());
             continue;
         }
 
@@ -59,17 +73,17 @@ bool ConfigManager::loadConfig()
 
     // Преобразуем значения из карты в структуру
     if (configMap.find("pidfilePath") != configMap.end()) {
-        configParams.pidfilePath = configMap["pidfilePath"];
+        configParams.pidfilePath = resolve_path(configMap["pidfilePath"]);
     }
     if (configMap.find("workingdirPath") != configMap.end()) {
-        configParams.workingdirPath = configMap["workingdirPath"];
+        configParams.workingdirPath = resolve_path(configMap["workingdirPath"]);
     }
     if (configMap.find("interval") != configMap.end()) {
         try {
             configParams.interval = std::stoi(configMap["interval"]);
         }
         catch (const std::exception& e) {
-            std::cerr << "Ошибка преобразования параметра interval: " << e.what() << std::endl;
+            syslog(LOG_WARNING, "Ошибка преобразования параметра interval: %s", e.what());
         }
     }
     return true;
@@ -82,5 +96,13 @@ ConfigParams ConfigManager::get() const
 
 void ConfigManager::setConfigPath(std::string path)
 {
-	configPath = path;
+    char buffer[PATH_MAX];
+    if (getcwd(buffer, PATH_MAX) == nullptr) {
+        syslog(LOG_ERR, "Ошибка получения текущей дирректории");
+        return exit(EXIT_FAILURE);
+    }
+    current_dir = std::string(buffer);
+    std::cerr << std::endl << current_dir << std::endl;
+
+    configPath = resolve_path(path);
 }

@@ -17,42 +17,45 @@ Daemon* Daemon::getInstance()
 	return instance_ptr;
 }
 
-void Daemon::run(const std::string configPath)
+void Daemon::run()
 {
-	openlog("daemon", LOG_PID, LOG_DAEMON);
-	syslog(LOG_NOTICE, "Daemon started.");
-
 	configManager = ConfigManager::getInstance();
 	pidfileManager = PidfileManager::getInstance();
 
-	configManager->setConfigPath(configPath);
+	openlog("daemon", LOG_PID, LOG_DAEMON);
+	syslog(LOG_NOTICE, "Daemon started.");
+
 	if (!configManager->loadConfig()) {
-		return;
+		exit(EXIT_FAILURE);
 	}
 
+
 	while (running) {
+		//std::cerr << "check dir" << std::endl;
 		checkdir();
-		sleep(configManager->get().interval);
+		//std::cerr << "sleep" << std::endl;
+		sleep(static_cast<unsigned int>(std::chrono::seconds(configManager->get().interval).count())); //миллисекунды в секунды
 	}
 
 	// Очистка и завершение
 	pidfileManager->remove();
 	syslog(LOG_NOTICE, "Daemon terminated.");
 	closelog();
+	//std::cerr << "deamon terminated" << std::endl;
 }
 
 void Daemon::handleSignal(int signum)
 {
 	if (signum == SIGHUP) {
-		syslog(LOG_NOTICE, "Получен сигнал SIGHUP, перезагрузка конфигурации.");
+		syslog(LOG_NOTICE, "SIGHUP: перезагрузка конфигурации.");
 		ConfigManager::getInstance()->loadConfig();
 	}
 	else if (signum == SIGTERM) {
-		syslog(LOG_NOTICE, "Получен сигнал SIGTERM, завершение работы.");
+		syslog(LOG_NOTICE, "SIGTERM: завершение работы.");
 		Daemon::getInstance()->running = false;
 	}
 	else {
-		syslog(LOG_WARNING, "Получен неизвестный сигнал: %d", signum);
+		syslog(LOG_WARNING, "Неизвестный сигнал: %d", signum);
 	}
 }
 
@@ -61,10 +64,12 @@ void Daemon::checkdir() const
 	//смена рабочей дирректории
 	try {
 		fs::current_path(configManager->get().workingdirPath);
-		syslog(LOG_NOTICE, "Рабочая директория изменена на: %s", fs::current_path());
+		syslog(LOG_NOTICE, "Рабочая директория изменена на: %s", fs::current_path().c_str());
+		//std::cerr << "Рабочая директория изменена на: " << fs::current_path().c_str();
 	}
 	catch (const fs::filesystem_error& e) {
-		syslog(LOG_WARNING, "Ошибка изменения рабочей директории : %s", e.what());
+		syslog(LOG_WARNING, "Ошибка изменения рабочей директории: %s", e.what());
+		//std::cerr << "Ошибка изменения рабочей директории" << std::endl;
 		return;
 	}
 
@@ -82,6 +87,7 @@ void Daemon::checkdir() const
 			// Проверяем, прошло ли более 1 минуты с момента последнего изменения файла
 			auto fileAge = std::chrono::duration_cast<std::chrono::minutes>(now - lastWriteTimeSys).count();
 			if (fileAge > 1) {
+				//std::cerr << "delete file" << std::endl;
 				syslog(LOG_INFO, "Удаление файла: %s (возраст: %ld минут)", entry.path().c_str(), fileAge);
 				fs::remove(entry.path());
 			}
