@@ -14,7 +14,6 @@ class ConfigManager
 public:
 	static ConfigManager* getInstance();
 
-	//Функции для работы с конфиг-файлом и данными из него
 	bool loadConfig();
 	ConfigParams get() const;
 	void setConfigPath(std::string path);
@@ -25,7 +24,6 @@ private:
 	ConfigManager(const ConfigManager&) = delete;
 	~ConfigManager() { instance_ptr = nullptr; }
 
-	//Переменные состояния и данных
 	std::string configPath = "";
 	ConfigParams configParams;
 
