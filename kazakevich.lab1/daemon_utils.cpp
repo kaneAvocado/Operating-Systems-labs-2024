@@ -7,26 +7,26 @@ void daemonize() {
 
     if (pid < 0) {
         //std::cerr << "Error fork pid < 0" << std::endl;
-        exit(EXIT_FAILURE);  // Îøèáêà fork
+        exit(EXIT_FAILURE);  // ÃŽÃ¸Ã¨Ã¡ÃªÃ  fork
     }
 
     if (pid > 0) {
         //std::cerr << "End parent process" << std::endl;
-        exit(EXIT_SUCCESS);  // Çàâåðøàåì ðîäèòåëüñêèé ïðîöåññ
+        exit(EXIT_SUCCESS);  // Ã‡Ã Ã¢Ã¥Ã°Ã¸Ã Ã¥Ã¬ Ã°Ã®Ã¤Ã¨Ã²Ã¥Ã«Ã¼Ã±ÃªÃ¨Ã© Ã¯Ã°Ã®Ã¶Ã¥Ã±Ã±
     }
 
     //std::cerr << "Create new s" << std::endl;
-    // Ñîçäàåì íîâûé ñåàíñ
+    // Ã‘Ã®Ã§Ã¤Ã Ã¥Ã¬ Ã­Ã®Ã¢Ã»Ã© Ã±Ã¥Ã Ã­Ã±
     if (setsid() < 0) {
         std::cerr << "setsid() < 0 error" << std::endl;
         exit(EXIT_FAILURE);
     }
     //std::cerr << "ignore signals" << std::endl;
-    // Èãíîðèðóåì ñèãíàëû
+    // ÃˆÃ£Ã­Ã®Ã°Ã¨Ã°Ã³Ã¥Ã¬ Ã±Ã¨Ã£Ã­Ã Ã«Ã»
     signal(SIGCHLD, SIG_IGN);
     signal(SIGHUP, SIG_IGN);
 
-   // Âòîðîé fork äëÿ ïðåäîòâðàùåíèÿ âîçìîæíîñòè îòêðåïëåíèÿ îò òåðìèíàëà
+   // Ã‚Ã²Ã®Ã°Ã®Ã© fork Ã¤Ã«Ã¿ Ã¯Ã°Ã¥Ã¤Ã®Ã²Ã¢Ã°Ã Ã¹Ã¥Ã­Ã¨Ã¿ Ã¢Ã®Ã§Ã¬Ã®Ã¦Ã­Ã®Ã±Ã²Ã¨ Ã®Ã²ÃªÃ°Ã¥Ã¯Ã«Ã¥Ã­Ã¨Ã¿ Ã®Ã² Ã²Ã¥Ã°Ã¬Ã¨Ã­Ã Ã«Ã 
     pid = fork();
     if (pid < 0) {
         //std::cerr << "second fork error pid < 0" << std::endl;
@@ -38,7 +38,7 @@ void daemonize() {
     }
 
     //std::cerr << "Set umask" << std::endl;
-    // Óñòàíàâëèâàåì umask è ðàáî÷óþ äèðåêòîðèþ
+    // Ã“Ã±Ã²Ã Ã­Ã Ã¢Ã«Ã¨Ã¢Ã Ã¥Ã¬ umask Ã¨ Ã°Ã Ã¡Ã®Ã·Ã³Ã¾ Ã¤Ã¨Ã°Ã¥ÃªÃ²Ã®Ã°Ã¨Ã¾
     umask(0);
 
     //std::cerr << "chdir" << std::endl;
@@ -48,15 +48,15 @@ void daemonize() {
     }
 
     //std::cerr << "close files" << std::endl;
-    // Çàêðûâàåì ñòàíäàðòíûå ôàéëîâûå äåñêðèïòîðû
-    //close(STDIN_FILENO);
-    //close(STDOUT_FILENO);
-    //close(STDERR_FILENO);
+    // Ã‡Ã ÃªÃ°Ã»Ã¢Ã Ã¥Ã¬ Ã±Ã²Ã Ã­Ã¤Ã Ã°Ã²Ã­Ã»Ã¥ Ã´Ã Ã©Ã«Ã®Ã¢Ã»Ã¥ Ã¤Ã¥Ã±ÃªÃ°Ã¨Ã¯Ã²Ã®Ã°Ã»
+    close(STDIN_FILENO);
+    close(STDOUT_FILENO);
+    close(STDERR_FILENO);
 
     //std::cerr << "open" << std::endl;
-    // Ïåðåíàïðàâëÿåì ñòàíäàðòíûå äåñêðèïòîðû íà /dev/null
-    //open("/dev/null", O_RDONLY); // STDIN
-    //open("/dev/null", O_RDWR);   // STDOUT
-    //open("/dev/null", O_RDWR);   // STDERR
+    // ÃÃ¥Ã°Ã¥Ã­Ã Ã¯Ã°Ã Ã¢Ã«Ã¿Ã¥Ã¬ Ã±Ã²Ã Ã­Ã¤Ã Ã°Ã²Ã­Ã»Ã¥ Ã¤Ã¥Ã±ÃªÃ°Ã¨Ã¯Ã²Ã®Ã°Ã» Ã­Ã  /dev/null
+    open("/dev/null", O_RDONLY); // STDIN
+    open("/dev/null", O_RDWR);   // STDOUT
+    open("/dev/null", O_RDWR);   // STDERR
     //std::cerr << "end demonize" << std::endl;
 }
