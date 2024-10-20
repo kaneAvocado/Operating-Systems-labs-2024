@@ -35,7 +35,7 @@ void Daemon::replace_folder(const Data & data)
         std::filesystem::create_directory(cur_path2);
 
     for (const auto &entry : std::filesystem::directory_iterator(cur_path1))
-        std::filesystem::rename(entry.path(), cur_path2 / entry.path());
+        std::filesystem::rename(entry.path(), cur_path2 / entry.path().filename());
 
     std::string message = "Files moved successfully from " + 
         std::string(cur_path1.c_str()) + " to " + std::string(cur_path2.c_str());
