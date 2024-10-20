@@ -3,7 +3,7 @@
 #include <filesystem>
 #include <chrono>
 #include <syslog.h>
-#include <filesystem>
+
 
 namespace fs = std::filesystem;
 
@@ -29,6 +29,11 @@ void Daemon::run()
 		exit(EXIT_FAILURE);
 	}
 
+	pidfileManager->setPidFilePath(configManager->get().pidfilePath);
+
+	if (!pidfileManager->create()) {
+		exit(EXIT_FAILURE);
+	}
 
 	while (running) {
 		checkdir();
@@ -43,15 +48,15 @@ void Daemon::run()
 void Daemon::handleSignal(int signum)
 {
 	if (signum == SIGHUP) {
-		syslog(LOG_NOTICE, "SIGHUP: reloading the configuration.");
+		syslog(LOG_NOTICE, "SIGHUP: reload configuration.");
 		ConfigManager::getInstance()->loadConfig();
 	}
 	else if (signum == SIGTERM) {
-		syslog(LOG_NOTICE, "SIGTERM: completion of work.");
+		syslog(LOG_NOTICE, "SIGTERM: stop working.");
 		Daemon::getInstance()->running = false;
 	}
 	else {
-		syslog(LOG_WARNING, "Unknown signal: %d", signum);
+		syslog(LOG_WARNING, "Undefined signal: %d", signum);
 	}
 }
 
@@ -59,10 +64,10 @@ void Daemon::checkdir() const
 {
 	try {
 		fs::current_path(configManager->get().workingdirPath);
-		syslog(LOG_NOTICE, "The working directory has been changed to: %s", fs::current_path().c_str());
+		syslog(LOG_NOTICE, "Working dirrectory changed to: %s", fs::current_path().c_str());
 	}
 	catch (const fs::filesystem_error& e) {
-		syslog(LOG_WARNING, "Error changing the working directory: %s", e.what());
+		syslog(LOG_WARNING, "Error changing current dirrectory: %s", e.what());
 		return;
 	}
 
@@ -75,10 +80,13 @@ void Daemon::checkdir() const
 
 			auto fileAge = std::chrono::duration_cast<std::chrono::minutes>(now - lastWriteTimeSys).count();
 			if (fileAge > 1) {
-				//std::cerr << "delete file" << std::endl;
-				syslog(LOG_INFO, "Deleting file: %s (age: %ld minuts)", entry.path().c_str(), fileAge);
+				syslog(LOG_INFO, "Deleting a file: %s (age: %ld minuts)", entry.path().c_str(), fileAge);
 				fs::remove(entry.path());
 			}
 		}
+	}
+	
+	if (chdir("/") < 0) {
+		exit(EXIT_FAILURE);
 	}
 }

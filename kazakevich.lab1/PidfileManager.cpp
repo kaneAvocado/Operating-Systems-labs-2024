@@ -7,7 +7,7 @@
 #include <signal.h> 
 #include <filesystem>
 
-#include <filesystem>
+#include <iostream>
 
 namespace fs = std::filesystem;
 PidfileManager* PidfileManager::instance_ptr = nullptr;
@@ -44,6 +44,7 @@ void PidfileManager::remove() const {
 
 bool PidfileManager::isExistingPidRunning() const {
     std::ifstream pidFileStream(pidFilePath);
+   
     if (pidFileStream.is_open()) {
         pid_t existingPid;
         pidFileStream >> existingPid;

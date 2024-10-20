@@ -38,8 +38,7 @@ bool ConfigManager::loadConfig()
 {
 	std::ifstream configReader(resolve_path(configPath));
 	if (!configReader.is_open()) {
-        //std::cerr << "Can not open conf file " << resolve_path(configPath).c_str() << std::endl;
-        syslog(LOG_WARNING, "Can not open config file: %s", configPath.c_str());
+        syslog(LOG_WARNING, "Cannot open configuration file: %s", configPath.c_str());
         return false;
 	}
 
@@ -50,10 +49,10 @@ bool ConfigManager::loadConfig()
         if (line.empty() || line[0] == '#') {
             continue;
         }
-	    
+
         size_t delimiterPos = line.find('=');
         if (delimiterPos == std::string::npos) {
-            syslog(LOG_WARNING, "Íåïðàâèëüíûé ôîðìàò ñòðîêè: %s", line.c_str());
+            syslog(LOG_WARNING, "Wrong line format: %s", line.c_str());
             continue;
         }
 
@@ -76,7 +75,7 @@ bool ConfigManager::loadConfig()
             configParams.interval = std::stoi(configMap["interval"]);
         }
         catch (const std::exception& e) {
-            syslog(LOG_WARNING, "Îøèáêà ïðåîáðàçîâàíèÿ ïàðàìåòðà interval: %s", e.what());
+            syslog(LOG_WARNING, "������ �������������� ��������� interval: %s", e.what());
         }
     }
     return true;
@@ -91,11 +90,10 @@ void ConfigManager::setConfigPath(std::string path)
 {
     char buffer[PATH_MAX];
     if (getcwd(buffer, PATH_MAX) == nullptr) {
-        syslog(LOG_ERR, "Îøèáêà ïîëó÷åíèÿ òåêóùåé äèððåêòîðèè");
-        return exit(EXIT_FAILURE);
+        syslog(LOG_ERR, "Error getting current dirrectory");
+        exit(EXIT_FAILURE);
     }
     current_dir = std::string(buffer);
-    std::cerr << std::endl << current_dir << std::endl;
 
     configPath = resolve_path(path);
 }

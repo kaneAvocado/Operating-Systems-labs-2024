@@ -7,7 +7,8 @@
 int main(int argc, char* argv[]) {
 
     if (argc != 2) {
-        std::cerr << "Usage: " << argv[0] << " <config_file>" << std::endl;
+        std::cerr << "Error< more or less than 2 arguments" << std::endl;
+        std::cerr << "To use this program, enter: " << argv[0] << " <config_file>" << std::endl;
         return EXIT_FAILURE;
     }
 
@@ -21,5 +22,5 @@ int main(int argc, char* argv[]) {
 
     Daemon::getInstance()->run();
 
-    return EXIT_SUCCESS;
+	return EXIT_SUCCESS;
 }
