@@ -1,5 +1,3 @@
-# Пример Makefile
-
 
 CXX = g++
 
