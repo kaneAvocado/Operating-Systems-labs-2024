@@ -12,14 +12,14 @@ fi
 GPP_VERSION=$(g++ -dumpversion | cut -d. -f1)
 
 # Check if the installed g++ version is sufficient
-if [[ $GPP_VERSION -ge $REQUIRED_GPP_VERSION ]]; then
-  echo "g++ version $GPP_VERSION is installed."
-else
-  echo "g++ version $GPP_VERSION is installed, but version $REQUIRED_GPP_VERSION or higher is required."
-  echo "You can update g++ using:"
-  echo "sudo apt update && sudo apt install g++-$REQUIRED_GPP_VERSION"
-  exit 1
-fi
+# if [[ $GPP_VERSION -ge $REQUIRED_GPP_VERSION ]]; then
+#   echo "g++ version $GPP_VERSION is installed."
+# else
+#   echo "g++ version $GPP_VERSION is installed, but version $REQUIRED_GPP_VERSION or higher is required."
+#   echo "You can update g++ using:"
+#   echo "sudo apt update && sudo apt install g++-$REQUIRED_GPP_VERSION"
+#   exit 1
+# fi
 
 SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
 
