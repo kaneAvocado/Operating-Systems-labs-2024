@@ -151,37 +151,39 @@ void Daemon::copy() {
         return;
     }
     if (!std::filesystem::is_directory(config.folder2)) {
-        syslog(LOG_WARNING, "folder 2 directory does not exist.");
+        syslog(LOG_INFO, "folder 2 directory does not exist.");
         return;
     }
     if (!std::filesystem::is_directory(std::filesystem::path(config.folder2) / subfolder_old)) {
-        syslog(LOG_WARNING, "folder 2 / OLD directory does not exist.");
+        syslog(LOG_INFO, "folder 2 / OLD directory does not exist.");
         return;
     }
-        if (!std::filesystem::is_directory(std::filesystem::path(config.folder2) / subfolder_new)) {
-        syslog(LOG_WARNING, "folder 2 / NEW directory does not exist.");
+    if (!std::filesystem::is_directory(std::filesystem::path(config.folder2) / subfolder_new)) {
+        syslog(LOG_INFO, "folder 2 / NEW directory does not exist.");
         return;
     }
+    syslog(LOG_INFO, "All folders exist.");
+
+    for (const auto& entry : std::filesystem::directory_iterator(std::filesystem::path(config.folder2) / subfolder_new ))
+        std::filesystem::remove(entry.path());
+    for (const auto& entry : std::filesystem::directory_iterator(std::filesystem::path(config.folder2) / subfolder_old ))
+        std::filesystem::remove(entry.path());
 
     for(const auto& entry: std::filesystem::directory_iterator(config.folder1)) {
-        for (const auto& entry_check : std::filesystem::directory_iterator(config.folder2)) {
-            if (entry_check != entry) {
-                struct stat statbuf;
-                stat(entry.path().c_str(), &statbuf); 
-                auto file_time = static_cast<std::time_t>(statbuf.st_mtime);
-                auto cur_time = std::chrono::system_clock::to_time_t(std::chrono::system_clock::now());
-                
-                std::filesystem::path folder2_path = "";
-                if ((cur_time - file_time) >= lifespan) {
-                    folder2_path = std::filesystem::path(config.folder2) / subfolder_old / entry.path().filename();
-                }
-                else {
-                    folder2_path = std::filesystem::path(config.folder2) / subfolder_new / entry.path().filename();
-                }
-
-                std::filesystem::copy_file(entry.path(), folder2_path, std::filesystem::copy_options::skip_existing);
-            }
+        struct stat statbuf;
+        stat(entry.path().c_str(), &statbuf); 
+        auto file_time = static_cast<std::time_t>(statbuf.st_mtime);
+        auto cur_time = std::chrono::system_clock::to_time_t(std::chrono::system_clock::now());
+        
+        std::filesystem::path folder2_path = "";
+        if ((cur_time - file_time) >= lifespan) {
+            folder2_path = std::filesystem::path(config.folder2) / subfolder_old / entry.path().filename();
         }
+        else {
+            folder2_path = std::filesystem::path(config.folder2) / subfolder_new / entry.path().filename();
+        }
+
+        std::filesystem::copy_file(entry.path(), folder2_path, std::filesystem::copy_options::skip_existing);
     }       
 }
 
