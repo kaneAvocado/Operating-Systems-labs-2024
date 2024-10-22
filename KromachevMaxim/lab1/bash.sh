@@ -22,10 +22,15 @@ else
     exit 1
 fi
 
-if [[ (-e $build_dir) && (-d $build_dir) ]]
+if [ -e $build_dir ] && [ -d $build_dir ]
 then
     echo "Удаление старой директории сборки..."
-    rm -r $BUILD_DIR
+    rm -r $build_dir
+fi
+
+if [ -e $executable_name ]
+then
+    rm $executable_name
 fi
 
 echo "Создание директории сборки..."
@@ -39,16 +44,19 @@ cmake .. -DCMAKE_C_FLAGS="-Wall -Werror" -DCMAKE_CXX_FLAGS="-Wall -Werror"
 echo "Запуск make..."
 make
 
-if [[ $? -eq 0 ]]
+if [ $? -eq 0 ]
 then
     echo "Сборка завершена успешно."
     cp $executable_name ../
-    cd ..
+
+    # Переход в родительскую директорию
+    cd .. || { echo "Не удалось перейти в родительскую директорию"; exit 1; }
+
     echo "Удаление директории сборки..."
-    rm -r $build_dir
+    rm -r $build_dir || { echo "Ошибка при удалении директории"; exit 1; }
+
     echo "Запуск программы..."
-    ./$executable_name
-    rm $executable_name
+    ./$executable_name || { echo "Ошибка при запуске программы"; exit 1; }
 else
     echo "Ошибка при сборке"
     exit 1

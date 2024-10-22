@@ -26,6 +26,7 @@
 #include <cstring>
 #include <regex>
 #include <string_view>
+#include <condition_variable>
 
 #include "logger.h"
 
@@ -65,6 +66,7 @@ private:
     static void termHandler(int signum, siginfo_t *info, void *ctx);
     static void hupHandler(int signum, siginfo_t *info, void *ctx) {
         readConfig = true;
+        configSemaphore.release();
     }
 
     std::string parsePath(const std::string& path);
@@ -73,7 +75,7 @@ private:
 
 
 private:
-    const char* PID_FILE = "/var/run/daemon.pid";
+    const char* PID_FILE = "/tmp/daemon.pid";
     const mode_t DIR_PERMISSIONS = 0777;
     const int PID_STR_SIZE = 10;
 
@@ -87,6 +89,8 @@ private:
     static std::atomic<bool> readConfig;
     static std::mutex logMutex;
     static std::mutex configMutex;
+    static std::binary_semaphore logSemaphore;
+    static std::binary_semaphore configSemaphore;
     static std::queue<std::string> logQueue;
 };
 

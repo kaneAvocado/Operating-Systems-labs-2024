@@ -5,6 +5,8 @@ std::mutex Daemon::logMutex;
 std::atomic<bool> Daemon::readConfig(false);
 std::mutex Daemon::configMutex;
 std::queue<std::string> Daemon::logQueue;
+std::binary_semaphore Daemon::logSemaphore(0);
+std::binary_semaphore Daemon::configSemaphore(0);
 
 void Daemon::Start()
 {
@@ -124,8 +126,10 @@ void Daemon::ReadConfig()
 
 void Daemon::Proccessing()
 {
-    std::filesystem::path fullPath = std::filesystem::path(folders.second) / logFile;
     while(true) {
+
+        std::filesystem::path fullPath = std::filesystem::path(folders.second) / logFile;
+
         try{
             auto pathSize = getFolderSize(folders.first);
             Logger::Logger::InstancePtr()->logMessage(Logger::LogLevel::_LOG_INFO,
@@ -280,6 +284,7 @@ void Daemon::ConnectSignals()
 void Daemon::termLog()
 {
     while(true) {
+        logSemaphore.acquire();
         std::lock_guard<std::mutex> lock(logMutex);
         while (!logQueue.empty()) {
             Logger::Logger::InstancePtr()->logMessage(Logger::LogLevel::_LOG_INFO,
@@ -298,11 +303,13 @@ void Daemon::termLog()
 
 void Daemon::hupReadConfig()
 {
-    while(true)
+    while(true) {
+        configSemaphore.acquire();
         if(readConfig == true) {
             ReadConfig();
             readConfig = false;
         }
+    }
 }
 
 void Daemon::termHandler(int signum, siginfo_t *info, void *ctx)
@@ -315,18 +322,19 @@ void Daemon::termHandler(int signum, siginfo_t *info, void *ctx)
         logQueue.push(termMessage);
     }
     stopDaemon = true;
+    logSemaphore.release();
 }
 
 std::string Daemon::parsePath(const std::string &input)
 {
-    std::regex path_regex(R"([\w\s\\/]+)");
+    std::regex path_regex(R"([.\w\s\\/]+)");
     //std::regex path_regex(R"((\/\s*[\w\s\\]+(\/[\w\s\\]+)*)\/?)");
 
     std::sregex_iterator currentMatch(input.begin(), input.end(), path_regex);
 
     if(currentMatch != std::sregex_iterator()) {
         std::string match = currentMatch->str();
-        match = trim(match);
+        //match = trim(match);
         std::vector<std::string> components = split(match, R"([\\/]+)");
         std::string result;
         for (auto& elem : components) {
