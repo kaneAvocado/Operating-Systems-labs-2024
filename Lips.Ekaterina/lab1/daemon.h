@@ -5,7 +5,6 @@
 
 
 class Daemon {
-    
 private:
     
     const std::string PID_FILE_PATH = "/var/run/lab1.pid";  // path to pid file 

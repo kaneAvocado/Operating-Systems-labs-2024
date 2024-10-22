@@ -97,38 +97,34 @@ void Daemon::parse_config(void) {
         return;
     }
 
-    // get data from config file
     std::string line;
-    
-    for (int i=0; i<=3; i++) {
+
+    // get path to folders
+    for (int i=0; i<=1; i++) {
         if (std::getline(config_file, line)) {
-            if (i==0 or i==1) { // get path to folders
-                std::filesystem::path path(line);
-                if (std::filesystem::exists(path) && std::filesystem::is_directory(path)) folders[i] = line;
-                else {
-                    syslog(LOG_WARNING, "Config file contains incorrect data (folder doesn't exists)");
-                    return;
-                }
-                syslog(LOG_INFO, "--> folder%i - %s", i+1, folders[i].c_str());
+            std::filesystem::path path(line);
+            if (std::filesystem::exists(path) && std::filesystem::is_directory(path)) folders[i] = line;
+            else {
+                syslog(LOG_WARNING, "Config file contains incorrect data (folder doesn't exists), please reconfig daemon");
+                return;
             }
-            else if (i==2) { // get file lifetime
-                if (!string_to_uint(line, file_lifetime))
-                    syslog(LOG_WARNING, "Config file contains incorrect data (not found file lifetime, use default lifetime)");
-                    // return;
-                syslog(LOG_INFO, "--> file lifetime - %u minutes", file_lifetime);
-            }
-            else { // get interval lifetime
-                if (!string_to_uint(line, interval_time))
-                    syslog(LOG_WARNING, "Config file contains incorrect data (not found interval time, use default interval time)");
-                    // return;
-                syslog(LOG_INFO, "--> interval time - %u seconds", interval_time);
-            }
+            syslog(LOG_INFO, "--> folder%i - %s", i+1, folders[i].c_str());
         }
         else {
             syslog(LOG_WARNING, "Invalid config file: not enough data");
             return;
         }
     }
+
+    // get file lifetime
+    if (!std::getline(config_file, line) or !string_to_uint(line, file_lifetime))
+        syslog(LOG_WARNING, "Config file contains incorrect data (not found file lifetime, use default lifetime)");
+    syslog(LOG_INFO, "--> file lifetime - %u minutes", file_lifetime);
+
+    // get interval lifetime
+    if (!std::getline(config_file, line) or !string_to_uint(line, interval_time))
+        syslog(LOG_WARNING, "Config file contains incorrect data (not found interval time, use default interval time)");
+    syslog(LOG_INFO, "--> interval time - %u seconds", interval_time);
 
     valid_config_flag = true;
 
