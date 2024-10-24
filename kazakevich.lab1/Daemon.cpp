@@ -26,13 +26,13 @@ void Daemon::run()
 	syslog(LOG_NOTICE, "Daemon started.");
 
 	if (!configManager->loadConfig()) {
-		exit(EXIT_FAILURE);
+		end_running(EXIT_FAILURE);
 	}
 
 	pidfileManager->setPidFilePath(configManager->get().pidfilePath);
 
 	if (!pidfileManager->create()) {
-		exit(EXIT_FAILURE);
+		end_running(EXIT_FAILURE);
 	}
 
 	while (running) {
@@ -40,9 +40,7 @@ void Daemon::run()
 		sleep(static_cast<unsigned int>(std::chrono::seconds(configManager->get().interval).count())); 
 	}
 
-	pidfileManager->remove();
-	syslog(LOG_NOTICE, "Daemon terminated.");
-	closelog();
+	end_running(-1);
 }
 
 void Daemon::handleSignal(int signum)
@@ -60,21 +58,11 @@ void Daemon::handleSignal(int signum)
 	}
 }
 
-void Daemon::checkdir() const
+void Daemon::checkdir()
 {
-	try {
-		fs::current_path(configManager->get().workingdirPath);
-		syslog(LOG_NOTICE, "Working dirrectory changed to: %s", fs::current_path().c_str());
-	}
-	catch (const fs::filesystem_error& e) {
-		syslog(LOG_WARNING, "Error changing current dirrectory: %s", e.what());
-		return;
-	}
-
 	auto now = std::chrono::system_clock::now();
-
-	for (const auto& entry : fs::directory_iterator(fs::current_path())) {
-		if (fs::is_regular_file(entry.status())) {
+	for (const auto& entry : fs::directory_iterator(configManager->get().workingdirPath)) {
+		if (fs::is_regular_file(entry.path())) {
 			auto lastWriteTime = fs::last_write_time(entry.path());
 			auto lastWriteTimeSys = decltype(now)(lastWriteTime.time_since_epoch());
 
@@ -85,8 +73,16 @@ void Daemon::checkdir() const
 			}
 		}
 	}
-	
-	if (chdir("/") < 0) {
-		exit(EXIT_FAILURE);
+
+}
+
+void Daemon::end_running(int num_exit = -1)
+{
+	pidfileManager->remove();
+	syslog(LOG_NOTICE, "Daemon terminated.");
+	closelog();
+
+	if (num_exit != -1) {
+		exit(num_exit);
 	}
 }

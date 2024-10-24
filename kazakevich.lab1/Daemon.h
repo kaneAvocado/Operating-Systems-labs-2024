@@ -26,7 +26,8 @@ private:
 	ConfigManager* configManager;
 	PidfileManager* pidfileManager;
 
-	void checkdir() const;
+	void checkdir();
+	void end_running(int num_exit);
 
 	static Daemon* instance_ptr;
 
