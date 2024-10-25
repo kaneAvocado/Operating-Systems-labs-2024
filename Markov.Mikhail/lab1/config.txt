@@ -1,0 +1,6 @@
+folder1.1 "folder 4" 5
+"folder 4" " folder2" 10
+" folder2" folder1.1 14
+" folder2"  10
+folder1.1 15
+" folder2" folder1.1 not_number
