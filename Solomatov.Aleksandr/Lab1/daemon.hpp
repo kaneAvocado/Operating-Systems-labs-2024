@@ -25,10 +25,9 @@ public:
         return instance;
     };
     void run(const std::filesystem::path &, const std::string &);
-    void open_config_file();
+    void open_config_file(const std::string &filename);
 
 private:
-    std::filesystem::path current_path;
     Config config;
 
     volatile sig_atomic_t got_sighup = 0;

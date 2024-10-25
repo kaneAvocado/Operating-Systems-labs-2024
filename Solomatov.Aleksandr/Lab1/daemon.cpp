@@ -1,6 +1,7 @@
 #include "daemon.hpp"
 #include <cstring>
-
+#define PID_PATH "/var/run/daemon.pid"
+#define MD5_NAME "md5_sums.txt"
 
 void signal_handler(int sig)
 {
@@ -63,14 +64,14 @@ std::string calculate_md5(const std::string& filename) {
 // Создание файла с MD5 суммами
 void Daemon::create_md5_file(const std::filesystem::path& dir_path)
 {
-    std::string md5_filename = "md5_sums.txt";
+    std::string md5_filename = MD5_NAME;
     std::filesystem::path md5_filepath = dir_path / md5_filename;
 
     std::ofstream md5_file(md5_filepath);
     if (!md5_file)
     {
         syslog(LOG_ERR, "Failed to create MD5 file: %s", md5_filepath.c_str());
-        return;
+        exit(EXIT_FAILURE);
     }
 
     for (const auto &entry : std::filesystem::directory_iterator(dir_path))
@@ -97,38 +98,68 @@ void Daemon::create_md5_file(const std::filesystem::path& dir_path)
 }
 
 // Чтение конфигурационного файла
-void Daemon::open_config_file()
+void Daemon::open_config_file(const std::string &filename)
 {
-    config.read();
+    config.read(filename);
 }
 
 // Создание PID файла
-void Daemon::create_pid_file()
-{
-    std::string pid_file = "/var/run/daemon.pid";
+bool is_process_running(pid_t pid) {
+    // Проверка существования процесса с указанным PID через систему /proc
+    return (kill(pid, 0) == 0);
+}
+
+// Функция для проверки существующего демона
+bool check_existing_daemon(const std::string &pid_file) {
+    std::ifstream file(pid_file);
+    if (file.is_open()) {
+        pid_t existing_pid;
+        file >> existing_pid;
+
+        // Проверяем, есть ли процесс с таким PID
+        if (existing_pid > 0 && is_process_running(existing_pid)) {
+            syslog(LOG_INFO, "Daemon is already running with PID %d", existing_pid);
+            return true; // Демон уже запущен
+        }
+        syslog(LOG_INFO, "PID file exists but no process with PID %d found", existing_pid);
+    }
+    return false; // Демона нет, можно запускать новый
+}
+
+void Daemon::create_pid_file() {
+    std::string pid_file = PID_PATH;
+
+    // Проверяем наличие работающего демона
+    if (check_existing_daemon(pid_file)) {
+        syslog(LOG_ERR, "Daemon is already running. Exiting.");
+        exit(EXIT_FAILURE);  // Новый демон не создаётся
+    }
+
+    // Открываем/создаём PID файл
     int pid_file_handle = open(pid_file.c_str(), O_RDWR | O_CREAT, 0600);
-    if (pid_file_handle == -1)
-    {
+    if (pid_file_handle == -1) {
         syslog(LOG_ERR, "PID file %s cannot be opened", pid_file.c_str());
         exit(EXIT_FAILURE);
     }
 
-    if (lockf(pid_file_handle, F_TLOCK, 0) == -1)
-    {
-        syslog(LOG_ERR, "Daemon is already running (PID file is locked)");
+    // Блокируем PID файл, чтобы исключить параллельный запуск другого демона
+    if (lockf(pid_file_handle, F_TLOCK, 0) == -1) {
+        syslog(LOG_ERR, "Failed to lock PID file %s. Another daemon instance might be running.", pid_file.c_str());
         exit(EXIT_FAILURE);
     }
 
+    // Очищаем содержимое PID файла
     ftruncate(pid_file_handle, 0);
     lseek(pid_file_handle, 0, SEEK_SET);
 
+    // Записываем новый PID в файл
     char str[10];
     snprintf(str, sizeof(str), "%d\n", getpid());
     write(pid_file_handle, str, strlen(str));
 
     syslog(LOG_INFO, "PID file %s created successfully with PID %d", pid_file.c_str(), getpid());
 
-    close(pid_file_handle);
+    // Оставляем файл открытым на время работы демона (для сохранения блокировки)
 }
 
 
@@ -156,12 +187,11 @@ void Daemon::daemonize()
 
 void Daemon::run(const std::filesystem::path & current_dir, const std::string & filename)
 {
-    current_path = current_dir;
-    config = {filename};
+    config = {current_dir};
 
     daemonize();  
 
-    open_config_file();  
+    open_config_file(filename);  
 
     signal(SIGHUP, signal_handler);
     signal(SIGTERM, signal_handler);
@@ -172,7 +202,7 @@ void Daemon::run(const std::filesystem::path & current_dir, const std::string & 
         {
             got_sighup = 0;
             syslog(LOG_INFO, "Re-reading config file");
-            open_config_file();  
+            open_config_file(filename);  
         }
 
         if (got_sigterm == 1)

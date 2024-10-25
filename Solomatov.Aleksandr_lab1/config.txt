@@ -1,2 +1,0 @@
-directory=/path/to/your/folder
-interval=60
