@@ -1,3 +1,0 @@
-pidfilePath=daemon.pid
-workingdirPath=test/
-interval=120
