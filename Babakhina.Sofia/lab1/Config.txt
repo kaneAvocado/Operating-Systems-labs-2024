@@ -1,0 +1,3 @@
+/home/barulina/barulina/ProjectsVSCode/OpSys/lab1/folder1
+/home/barulina/barulina/ProjectsVSCode/OpSys/lab1/folder2
+60
