@@ -85,11 +85,11 @@ bool PidfileManager::writePidToFile() const {
     pidFileOut << getpid() << std::endl;
     pidFileOut.close();
     syslog(LOG_NOTICE, "PID file created with PID %d.", getpid());
-    std::cerr << "pid " << getpid() << std::endl;
+    // std::cerr << "pid " << getpid() << std::endl;
     return true;
 }
 
 bool PidfileManager::processExists(pid_t pid) const {
-    // Èìïëåìåíòàöèÿ ïðîâåðêè ñóùåñòâîâàíèÿ ïðîöåññà
+    // ÃˆÃ¬Ã¯Ã«Ã¥Ã¬Ã¥Ã­Ã²Ã Ã¶Ã¨Ã¿ Ã¯Ã°Ã®Ã¢Ã¥Ã°ÃªÃ¨ Ã±Ã³Ã¹Ã¥Ã±Ã²Ã¢Ã®Ã¢Ã Ã­Ã¨Ã¿ Ã¯Ã°Ã®Ã¶Ã¥Ã±Ã±Ã 
     return (kill(pid, 0) == 0);
 }
