@@ -1,0 +1,3 @@
+test/folder1 ignfile1.txt
+test/folder2 ignfile2.txt
+
