@@ -1,0 +1,4 @@
+/home/eklipsss/os/lips_lab1/folder
+/home/eklipsss/os/lips_lab1/folder2
+10
+30
