@@ -1,23 +1,4 @@
-#include <cerrno>
-#include <fcntl.h>
-#include <limits.h>
-#include <signal.h>
-#include <cstdio>
-#include <cstdlib>
-#include <cstring>
-#include <sys/file.h>
-#include <syslog.h>
-#include <unistd.h>
-#include <iostream>
-#include <vector>
-#include <fstream>
-
-#include "monitor.cpp"
-
-#define IDENTITY "my_daemon"
-#define PID_FILE "/var/run/" IDENTITY ".pid"
-
-static char config_file[PATH_MAX];
+#include "my_daemon.hpp"
 
 int read_pid(const char *pid_file)
 {
@@ -112,10 +93,11 @@ void sigterm_handler(int /*sig*/)
     exit(0);
 }
 
-int daemon_main()
+int Daemon::daemon_main(const std::filesystem::path &file)
 {
+    config_file = file;
     // Open log
-    openlog(IDENTITY, LOG_CONS | LOG_PID | LOG_NDELAY, LOG_LOCAL0);
+    openlog("my_daemon", LOG_CONS | LOG_PID | LOG_NDELAY, LOG_LOCAL0);
     syslog(LOG_NOTICE, "Daemon started");
 
     // Demonization
@@ -136,14 +118,14 @@ int daemon_main()
     close(STDERR_FILENO);
 
     // Write PID file
-    int pid = check_pid(PID_FILE);
+    int pid = check_pid(PID_FILE.c_str());
     if (pid > 0 && kill(pid, SIGTERM) < 0 && errno != ESRCH)
     {
         syslog(LOG_ERR, "kill failed");
         return -1;
     }
 
-    if (write_pid(PID_FILE) == -1)
+    if (write_pid(PID_FILE.c_str()) == -1)
     {
         syslog(LOG_ERR, "Failed writing PID");
         return -1;
@@ -182,7 +164,7 @@ int daemon_main()
     }
 
     // Start monitor
-    int ret = start_monitor(path_list);
+    int ret = monitor::start_monitor(path_list);
     if (ret == -1)
     {
         syslog(LOG_DEBUG, "start_monitor failed");
@@ -201,30 +183,4 @@ int daemon_main()
     return sigwait(&sig_set, &sig);
 }
 
-int main()
-{
-    if (realpath("my_daemon.cfg", config_file) == nullptr)
-    {
-        std::cerr << "Config file not found" << std::endl;
-        return -1;
-    }
 
-    std::cout << "Config file: " << config_file << std::endl;
-
-    pid_t daemon_pid = fork();
-    if (daemon_pid > 0)
-    {
-        std::cout << "Daemon PID = " << daemon_pid << std::endl;
-    }
-    else if (daemon_pid == 0)
-    {
-        return daemon_main();
-    }
-    else
-    {
-        std::cerr << "Failed starting daemon" << std::endl;
-    }
-
-    std::cout << "Parent terminated" << std::endl;
-    return 0;
-}

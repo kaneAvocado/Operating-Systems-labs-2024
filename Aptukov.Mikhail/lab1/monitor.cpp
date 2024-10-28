@@ -1,13 +1,4 @@
-#include <cerrno>
-#include <poll.h>
-#include <cstdio>
-#include <cstdlib>
-#include <sys/inotify.h>
-#include <unistd.h>
-#include <cstring>
-#include <syslog.h>
-#include <vector>
-#include <string>
+#include "monitor.hpp"
 
 static void handle_events(int fd, const std::vector<int>& wd, const std::vector<std::string>& path_list)
 {
@@ -63,18 +54,13 @@ static void handle_events(int fd, const std::vector<int>& wd, const std::vector<
     }
 }
 
-inline int start_monitor(const std::vector<std::string>& path_list)
+int monitor::start_monitor(const std::vector<std::string> &path_list)
 {
     struct pollfd fds[1];
     nfds_t nfds;
     int poll_num;
     int fd;
     std::vector<int> wd;
-
-    if (path_list.empty())
-    {
-        return -1;
-    }
 
     syslog(LOG_DEBUG, "start_monitor: count = %lu", path_list.size());
 

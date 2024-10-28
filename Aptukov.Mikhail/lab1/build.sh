@@ -2,6 +2,5 @@
 
 sudo make my_daemon
 
-sudo ./my_daemon
+sudo ./my_daemon my_daemon.cfg
 
-sudo rm -rf ./my_daemon
