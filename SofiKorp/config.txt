@@ -1,3 +1,0 @@
-working folder 1 = test1
-working folder 2 = test2
-interval = 30
